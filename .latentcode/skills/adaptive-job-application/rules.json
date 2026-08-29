@@ -1,0 +1,24 @@
+{
+  "name": "adaptive-job-application",
+  "version": "1.1.0",
+  "description": "SkillPatch reusable rules for evidence-backed career application agent workflows.",
+  "rules": {
+    "requireEvidenceForSkills": true,
+    "allowInferredExperience": false,
+    "matchStatuses": ["MATCHED", "PARTIAL", "MISSING", "UNKNOWN"],
+    "strategyThresholds": {
+      "applyAndOutreachMinScore": 85,
+      "applyMinScore": 70,
+      "outreachMinScore": 50
+    },
+    "projectPriorityRules": {
+      "ai": ["Agentic Workflow Copilot", "Distributed Log Streaming Engine", "E-Commerce Microservices Platform"],
+      "backend": ["Distributed Log Streaming Engine", "Agentic Workflow Copilot", "E-Commerce Microservices Platform"],
+      "fullstack": ["Agentic Workflow Copilot", "E-Commerce Microservices Platform", "Distributed Log Streaming Engine"]
+    },
+    "humanInTheLoop": {
+      "requireApprovalForColdEmail": true,
+      "requireApprovalForExternalSubmission": true
+    }
+  }
+}
