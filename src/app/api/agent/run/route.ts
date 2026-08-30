@@ -19,6 +19,8 @@ export async function POST(req: Request) {
     const session = await orchestrator.executeJobPipeline(jobId, customInstruction, sessionUser.user.id);
     return NextResponse.json(session);
   } catch (err: unknown) {
+    console.error('[Orchestrator Error]:', err);
+    require('fs').writeFileSync('orchestrator-error.log', err instanceof Error ? err.stack : String(err));
     const message = err instanceof Error ? err.message : 'Failed to execute agent workflow';
     return NextResponse.json({ error: message }, { status: 500 });
   }

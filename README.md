@@ -302,6 +302,13 @@ Duration:   ~1.5s
 
 ## 📋 Version History
 
+### v0.4.0 – Production Stability & Graph RAG Hardening (Aug 30, 2026)
+- 🚀 **Neo4j Graph RAG Unblocked**: Fixed local TLS encryption and authentication mismatch bugs allowing local Neo4j Desktop to successfully execute Cypher evidence extraction.
+- 🚀 **Resume AI Parser Upgrade**: Updated Gemini prompt schemas to strictly enforce real resume data over mock templates, properly parsing `skillsUsed` and `highlights`.
+- 🚀 **Fallback Resilience**: Hardened the `EvidenceMatcherEngine` against corrupted AI JSON payloads by employing safe optional chaining.
+- 🚀 **UI Rendering Fixes**: Implemented automatic HTML stripping in job previews and fixed React runtime `.map()` crashes by ensuring empty-array fallbacks.
+- 🚀 **Seed Data Integrity**: Fixed the SQLite local database seeder to accurately parse and seed B.Tech degree formats for engineering candidates.
+
 ### v0.3.0 — AI + Scraper Layer (Aug 30, 2026)
 - ✅ **Gemini 1.5 Flash**: Graph RAG engine for grounded resume + email generation
 - ✅ **Job Scraper**: RemoteOK, HN Hiring, Adzuna — real live job discovery

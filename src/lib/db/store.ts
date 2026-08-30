@@ -9,7 +9,7 @@ import {
   DEMO_RECRUITER_EMAIL
 } from '@/lib/types';
 import client from './client';
-import { jobs, candidateProfiles, applications, skillGaps, agentTraces } from './schema';
+import { jobs, candidateProfiles, applications, skillGaps, agentTraces, users } from './schema';
 import { eq, desc } from 'drizzle-orm';
 import crypto from 'crypto';
 import { seedSync } from './seed';
@@ -55,7 +55,7 @@ Backend & Databases: Node.js, PostgreSQL, REST APIs
 Tools & Systems: Git, GitHub, Docker, Algorithms
 
 EDUCATION
-B.S. Computer Science | SRM University AP | Graduation: 2026 | GPA: 3.88/4.0
+B.Tech Computer Science | SRM University AP | Graduation: 2026 | GPA: 3.88/4.0
 
 EXPERIENCE
 Software Engineering Intern | ScaleData Systems | May 2025 - Aug 2025
@@ -81,7 +81,7 @@ PROJECTS
   },
   education: [
     {
-      degree: 'B.S. Computer Science',
+      degree: 'B.Tech Computer Science',
       fieldOfStudy: 'Computer Science & Artificial Intelligence',
       institution: 'SRM University AP',
       graduationYear: 2026,
@@ -470,11 +470,13 @@ class DataStore {
     if (!profile) {
       // No profile for this user yet — auto-create a blank one so they don't see Alex Morgan's data
       if (userId) {
+        const userRecord = client.select().from(users).where(eq(users.id, userId)).get();
+        
         const newProfile: CandidateProfile = {
           ...INITIAL_CANDIDATE_PROFILE,
           id: `cand_${userId.slice(0, 12)}`,
-          fullName: '',
-          email: '',
+          fullName: userRecord?.name || '',
+          email: userRecord?.email || '',
           phone: '',
           headline: 'Software Engineer',
           summary: '',
@@ -723,6 +725,32 @@ class DataStore {
     return client.select().from(skillGaps)
       .where(userId ? eq(skillGaps.userId, userId) : undefined)
       .all() as unknown as SkillGapInsight[];
+  }
+
+  processSkillGaps(missingSkills: { name: string; category: string }[], userId?: string) {
+    if (!userId) return;
+    for (const skill of missingSkills) {
+      const existing = client.select().from(skillGaps)
+        .where(eq(skillGaps.skillName, skill.name))
+        .all();
+      
+      if (existing.length > 0) {
+        client.update(skillGaps)
+          .set({ frequencyAcrossJobs: existing[0].frequencyAcrossJobs! + 1 })
+          .where(eq(skillGaps.id, existing[0].id))
+          .run();
+      } else {
+        client.insert(skillGaps).values({
+          id: `gap_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          userId,
+          skillName: skill.name,
+          category: skill.category,
+          frequencyAcrossJobs: 1,
+          impactLevel: 'MODERATE',
+          actionableAdvice: `Build a portfolio project demonstrating hands-on experience with ${skill.name}.`
+        }).run();
+      }
+    }
   }
 }
 

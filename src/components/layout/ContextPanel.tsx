@@ -29,13 +29,13 @@ export default function ContextPanel({ insights }: ContextPanelProps) {
         </div>
         
         <p className="text-xs text-slate-700 font-medium leading-relaxed">
-          {insights?.text || "67% of backend software engineering roles you are evaluating request AWS infrastructure experience."}
+          {insights?.text || "The AI is actively analyzing your saved opportunities to discover market trends and match them against your skillset."}
         </p>
 
         <div className="p-3 bg-white/90 backdrop-blur-xs rounded-xl border border-blue-200/60 text-xs text-slate-600 space-y-1">
           <span className="font-bold text-slate-800 block text-[11px]">Recommendation</span>
           <p className="text-[11px]">
-            {insights?.actionAdvice || "Prioritize roles where your existing backend, Node.js, and AI workflow experience is strongest."}
+            {insights?.actionAdvice || "Continue uploading your resume and discovering jobs to receive highly tailored career insights."}
           </p>
         </div>
 
@@ -56,34 +56,19 @@ export default function ContextPanel({ insights }: ContextPanelProps) {
             <label className="block text-slate-500 font-semibold mb-1">Workplace</label>
             <div className="flex gap-1.5 flex-wrap">
               <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-semibold rounded-lg border border-blue-200 cursor-pointer text-[11px]">
-                Remote (10)
+                Remote
               </span>
               <span className="px-2.5 py-1 bg-slate-100 text-slate-600 font-medium rounded-lg hover:bg-slate-200 cursor-pointer text-[11px]">
-                Hybrid (5)
+                Hybrid
               </span>
             </div>
           </div>
 
-          <div>
-            <label className="block text-slate-500 font-semibold mb-1">Minimum Match</label>
-            <div className="flex gap-1.5">
-              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded-lg border border-emerald-200 cursor-pointer text-[11px]">
-                80%+ High Match
-              </span>
-            </div>
-          </div>
+
         </div>
       </div>
 
-      {/* Safety & Control Banner */}
-      <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-2">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-blue-400">
-          <Sparkles className="w-4 h-4" /> Safety Guaranteed
-        </div>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Zero unverified claims. Cold email and external applications strictly require user approval.
-        </p>
-      </div>
+
     </div>
   );
 }

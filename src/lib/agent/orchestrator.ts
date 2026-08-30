@@ -59,10 +59,11 @@ export class JobHuntOrchestrator {
 
     // Step 3: Evidence Engine & Skill Gap Agent
     logTrace('Skill Gap Agent', 'Evidence Matching Analysis', 'INFO', `Cross-referencing candidate evidence against ${job.requirements.length} job requirements...`, 'evidence-matcher');
-    const matchAnalysis = evidenceEngine.analyzeJobMatch(candidate, job);
+    const matchAnalysis = await evidenceEngine.analyzeJobMatch(candidate, job);
     
     logTrace('Skill Gap Agent', 'Requirement Mapping Complete', 'SUCCESS', `Overall Match Score: ${matchAnalysis.overallScore}%. Matched: ${matchAnalysis.evidenceMap.filter(e => e.matchStatus === 'MATCHED').length}, Gaps: ${matchAnalysis.skillGaps.length}.`, 'skill-gap-analyzer');
-    this.skillGapAgent.run(matchAnalysis);
+    const gapResult = this.skillGapAgent.run(matchAnalysis);
+    db.processSkillGaps(gapResult.missingGaps.map(g => ({ name: g.requirementName, category: g.category })), userId);
 
     // Step 4: Application Strategist Agent
     logTrace('Application Strategist Agent', 'Strategy Formulation', 'INFO', `Evaluating strategy thresholds (APPLY vs OUTREACH vs SKIP)...`, 'strategy-evaluator');

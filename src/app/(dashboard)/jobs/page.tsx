@@ -184,7 +184,7 @@ export default function JobsPage() {
                 </div>
 
                 <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
-                  {job.description}
+                  {job.description.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")}
                 </p>
 
                 <div className="flex gap-1.5 flex-wrap pt-1">

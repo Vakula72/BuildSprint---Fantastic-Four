@@ -5,11 +5,12 @@ import dbClient from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import crypto from 'crypto';
 
-export default function SignupPage({
+export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: { error?: string, msg?: string };
+  searchParams: Promise<{ error?: string, msg?: string }>;
 }) {
+  const params = await searchParams;
   async function signupAction(formData: FormData) {
     'use server';
     
@@ -49,13 +50,13 @@ export default function SignupPage({
     redirect('/login?msg=AccountCreated');
   }
 
-  const errorMessage = searchParams?.error === 'EmailTaken' 
+  const errorMessage = params?.error === 'EmailTaken' 
     ? 'That email is already registered.' 
-    : searchParams?.error === 'PasswordMismatch'
+    : params?.error === 'PasswordMismatch'
       ? 'Passwords do not match.'
-      : searchParams?.error === 'MissingFields'
+      : params?.error === 'MissingFields'
         ? 'Please fill in all fields.'
-        : searchParams?.error === 'ServerError'
+        : params?.error === 'ServerError'
           ? 'An internal error occurred. Please try again.'
           : null;
 

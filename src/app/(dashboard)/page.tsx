@@ -17,9 +17,11 @@ import {
   Brain,
   ShieldCheck,
   FileCheck,
-  Clock
+  Clock,
+  User,
+  Upload
 } from '@/components/ui/icons';
-import { Job, JobApplicationRecord } from '@/lib/types';
+import { Job, JobApplicationRecord, CandidateProfile } from '@/lib/types';
 import ContextPanel from '@/components/layout/ContextPanel';
 
 export default function DashboardPage() {
@@ -28,13 +30,15 @@ export default function DashboardPage() {
   const [applications, setApplications] = useState<JobApplicationRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [agentSearching, setAgentSearching] = useState(false);
+  const [profile, setProfile] = useState<CandidateProfile | null>(null);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [jobsRes, appRes] = await Promise.all([
+        const [jobsRes, appRes, profileRes] = await Promise.all([
           fetch('/api/jobs'),
-          fetch('/api/applications')
+          fetch('/api/applications'),
+          fetch('/api/profile')
         ]);
 
         // Redirect to login if not authenticated
@@ -45,14 +49,17 @@ export default function DashboardPage() {
 
         const jobsData = await jobsRes.json();
         const appData = await appRes.json();
+        const profileData = await profileRes.json();
         if (Array.isArray(jobsData)) setJobs(jobsData);
         if (Array.isArray(appData)) setApplications(appData);
+        if (profileData && !profileData.error) setProfile(profileData);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
       }
     }
     loadData();
   }, [router]);
+
 
   function handleLetAgentSearch() {
     setAgentSearching(true);
@@ -77,6 +84,51 @@ export default function DashboardPage() {
     <div className="flex gap-8">
       {/* Main Workspace (Center Zone) */}
       <div className="flex-1 min-w-0 space-y-6">
+
+        {/* Onboarding Banner — shown only when profile is empty */}
+        {profile && !profile.fullName && !profile.resumeFile && (
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-5 rounded-3xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-extrabold text-base">Welcome! Set up your profile to get started.</h2>
+              <p className="text-orange-100 text-xs mt-0.5 font-medium">
+                The AI agent needs your resume to match jobs and generate tailored applications. Upload your PDF now.
+              </p>
+            </div>
+            <Link
+              href="/profile#resume"
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-white text-orange-600 font-bold text-xs rounded-xl hover:bg-orange-50 transition-all shadow-md"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Resume
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
+
+        {/* Profile incomplete reminder — shown when name exists but no resume */}
+        {profile && profile.fullName && !profile.resumeFile && (
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-shrink-0 w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
+              <Upload className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-800">Hi {profile.fullName}! Upload your resume to activate the agent.</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                The agent uses your resume as its evidence source for job matching and resume tailoring.
+              </p>
+            </div>
+            <Link
+              href="/profile#resume"
+              className="flex-shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all"
+            >
+              Upload Resume →
+            </Link>
+          </div>
+        )}
+
         {/* Hero Search Section */}
         <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl space-y-5 relative overflow-hidden">
           <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>

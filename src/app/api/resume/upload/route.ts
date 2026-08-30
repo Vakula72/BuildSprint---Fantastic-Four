@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/store';
 import { auth } from '@/auth';
+import { graphSync } from '@/lib/graph/sync';
 
 // Force Node.js runtime so pdf-parse works
 export const runtime = 'nodejs';
 
+import { createRequire } from 'module';
+
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // Dynamically import pdf-parse (it requires Node runtime)
-    const pdfParse = (await import('pdf-parse')).default;
+    const require = createRequire(import.meta.url);
+    const pdfParse = require('pdf-parse');
     const data = await pdfParse(buffer);
     return data.text || '';
   } catch (err) {
@@ -24,14 +27,21 @@ async function extractProfileFromText(text: string, fileName: string) {
     try {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-3.6-flash',
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+        }
+      });
 
       const prompt = `Extract structured information from this resume text. Return ONLY valid JSON, no markdown.
+IMPORTANT: You MUST extract the actual values from the resume. Do NOT use the placeholder values from the example JSON structure.
 
 Resume text:
 ${text.slice(0, 4000)}
 
-Return this exact JSON structure:
+Return this exact JSON structure, but replace the values with the candidate's actual data:
 {
   "fullName": "candidate full name",
   "email": "email address",
@@ -39,10 +49,10 @@ Return this exact JSON structure:
   "headline": "professional headline or job title",
   "summary": "professional summary paragraph",
   "skills": [{"name": "SkillName", "proficiency": "Advanced|Intermediate|Beginner", "id": "sk1"}],
-  "experience": [{"id": "exp1", "company": "Company", "roleTitle": "Title", "startDate": "Jan 2024", "endDate": "Present", "description": "description", "achievements": ["achievement"]}],
-  "education": [{"id": "edu1", "institution": "University", "degree": "B.S. Computer Science", "startDate": "2020", "graduationDate": "2024", "gpa": "3.8"}],
-  "projects": [{"id": "proj1", "title": "Project Title", "description": "description", "technologies": ["Tech1"], "repoUrl": "", "liveUrl": ""}],
-  "targetTitles": ["Software Engineer"],
+  "experience": [{"id": "exp1", "company": "Actual Company Name", "roleTitle": "Actual Title", "startDate": "Jan 2024", "endDate": "Present", "description": "Actual description", "skillsUsed": ["Skill1"], "highlights": ["Actual highlight"]}],
+  "education": [{"id": "edu1", "institution": "Actual University", "degree": "Actual Degree (e.g. B.Tech Computer Science)", "startDate": "2020", "graduationDate": "2024", "gpa": "3.8"}],
+  "projects": [{"id": "proj1", "title": "Actual Project Title", "description": "Actual description", "technologies": ["Tech1"], "repoUrl": "", "liveUrl": ""}],
+  "targetTitles": ["list of target job titles based on experience"],
   "targetLocations": ["Remote"],
   "githubUrl": "",
   "linkedinUrl": "",
@@ -77,7 +87,7 @@ Return this exact JSON structure:
     experience: [],
     education: [],
     projects: [],
-    targetTitles: ['Software Engineer'],
+    targetTitles: [],
     targetLocations: ['Remote'],
     githubUrl: (text.match(/github\.com\/[\w-]+/)?.[0] ? `https://${text.match(/github\.com\/[\w-]+/)?.[0]}` : ''),
     linkedinUrl: (text.match(/linkedin\.com\/in\/[\w-]+/)?.[0] ? `https://${text.match(/linkedin\.com\/in\/[\w-]+/)?.[0]}` : ''),
@@ -129,8 +139,8 @@ export async function POST(req: Request) {
     const updatedProfile = {
       ...currentProfile,
       // Only overwrite fields that were actually found in the resume
-      fullName: extracted.fullName || currentProfile.fullName,
-      email: extracted.email || currentProfile.email,
+      fullName: extracted.fullName || session.user.name || currentProfile.fullName,
+      email: extracted.email || session.user.email || currentProfile.email,
       phone: extracted.phone || currentProfile.phone,
       headline: extracted.headline || currentProfile.headline,
       summary: extracted.summary || currentProfile.summary,
@@ -162,6 +172,14 @@ export async function POST(req: Request) {
       details: `Parsed '${fileName}'. Extracted ${extracted.skills?.length || 0} skills, ${extracted.experience?.length || 0} experience entries, ${extracted.projects?.length || 0} projects. Profile auto-populated.`,
       toolUsed: 'resume-parser'
     }, session.user.id);
+
+    // Sync to Neo4j Knowledge Graph
+    try {
+      await graphSync.syncCandidate(updatedProfile);
+      console.log('[Neo4j] Candidate synchronized successfully.');
+    } catch (e) {
+      console.error('[Neo4j] Failed to sync candidate to graph:', e);
+    }
 
     return NextResponse.json({
       success: true,

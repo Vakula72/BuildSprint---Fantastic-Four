@@ -20,8 +20,8 @@ function getModel(): GenerativeModel {
   }
 
   genAI = new GoogleGenerativeAI(apiKey);
-  // use gemini-1.5-flash as requested
-  model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  // use gemini-3.6-flash to prevent 404
+  model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
   return model;
 }
 

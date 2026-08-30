@@ -21,12 +21,16 @@ export function getDriver(): Driver | null {
   }
 
   try {
+    const isPlaceholder = NEO4J_PASSWORD === 'your_neo4j_desktop_password';
+    const authToken = isPlaceholder ? neo4j.auth.none() : neo4j.auth.basic(NEO4J_USERNAME, NEO4J_PASSWORD);
+
     driver = neo4j.driver(
       NEO4J_URI,
-      neo4j.auth.basic(NEO4J_USERNAME, NEO4J_PASSWORD),
+      authToken,
       {
         disableLosslessIntegers: true, // Simplified number handling for TS
         maxConnectionPoolSize: 50,
+        encrypted: 'ENCRYPTION_OFF'
       }
     );
     return driver;

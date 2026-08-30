@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -36,6 +36,25 @@ export default function JobDetailPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'evidence' | 'strategy' | 'resume' | 'coldemail'>('evidence');
   const [resumeMode, setResumeNote] = useState<'TAILORED' | 'ORIGINAL'>('TAILORED');
+  const resumeRef = useRef<HTMLDivElement>(null);
+
+  async function handleDownloadPDF() {
+    if (!resumeRef.current) return;
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const opt = {
+        margin:       0.5,
+        filename:     `${candidateProfile?.fullName?.replace(/\s+/g, '_') || 'Candidate'}_Resume.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(resumeRef.current).save();
+    } catch (err) {
+      console.error('PDF generation failed', err);
+      window.print();
+    }
+  }
 
   useEffect(() => {
     async function loadJobAndApp() {
@@ -181,8 +200,12 @@ export default function JobDetailPage() {
               <span className="flex items-center gap-1 font-semibold text-slate-700"><Building2 className="w-4 h-4 text-slate-400" /> {job.company}</span>
               <span>•</span>
               <span className="flex items-center gap-1"><MapPin className="w-4 h-4 text-slate-400" /> {job.location}</span>
-              <span>•</span>
-              <span className="flex items-center gap-1 font-semibold text-slate-700"><DollarSign className="w-4 h-4 text-slate-400" /> {job.salaryRange}</span>
+              {job.salaryRange && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 font-semibold text-slate-700"><DollarSign className="w-4 h-4 text-slate-400" /> {job.salaryRange}</span>
+                </>
+              )}
             </p>
           </div>
 
@@ -340,13 +363,7 @@ export default function JobDetailPage() {
               </h2>
 
               <div className="space-y-3">
-                {(session?.analysis?.evidenceMap || job.requirements.map(r => ({
-                  requirementName: r.name,
-                  category: r.category,
-                  matchStatus: r.name.toLowerCase().includes('aws') ? 'MISSING' : 'MATCHED',
-                  candidateEvidence: r.name.toLowerCase().includes('aws') ? 'No verified candidate evidence in resume' : 'Verified in Uploaded Resume + Agentic Copilot Project',
-                  explanation: `Direct evidence cross-referenced against candidate profile.`
-                }))).map((item, idx) => (
+                {(session?.analysis?.evidenceMap || []).map((item, idx) => (
                   <div
                     key={idx}
                     className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row justify-between gap-3"
@@ -387,38 +404,49 @@ export default function JobDetailPage() {
               </h2>
 
               <div className="space-y-3 text-xs">
-                <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 space-y-1">
-                  <div className="flex justify-between font-bold text-amber-900">
-                    <span>AWS Infrastructure</span>
-                    <span className="text-[10px] uppercase font-black bg-amber-200 px-1.5 py-0.5 rounded">MISSING</span>
+                {(session?.analysis?.skillGaps || []).map((gap, idx) => (
+                  <div key={idx} className={`p-3.5 rounded-2xl border space-y-1 ${
+                    gap.matchStatus === 'MISSING' ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'
+                  }`}>
+                    <div className={`flex justify-between font-bold ${
+                      gap.matchStatus === 'MISSING' ? 'text-rose-900' : 'text-amber-900'
+                    }`}>
+                      <span>{gap.requirementName}</span>
+                      <span className={`text-[10px] uppercase font-black px-1.5 py-0.5 rounded ${
+                        gap.matchStatus === 'MISSING' ? 'bg-rose-200' : 'bg-amber-200'
+                      }`}>{gap.matchStatus}</span>
+                    </div>
+                    <p className="text-slate-600">{gap.candidateEvidence}</p>
                   </div>
-                  <p className="text-slate-600">No verified deployment proof in uploaded resume.</p>
-                </div>
-
-                <div className="p-3.5 bg-blue-50 rounded-2xl border border-blue-200 space-y-1">
-                  <div className="flex justify-between font-bold text-blue-900">
-                    <span>Docker Containerization</span>
-                    <span className="text-[10px] uppercase font-black bg-blue-200 px-1.5 py-0.5 rounded">PARTIAL</span>
+                ))}
+                
+                {!session?.analysis?.skillGaps && (
+                  <div className="text-slate-500 font-medium p-4 text-center">
+                    Agent has not analyzed skill gaps yet. Run Orchestrator.
                   </div>
-                  <p className="text-slate-600">Present in Distributed Log Streamer project repo.</p>
-                </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB CONTENT: Strategy */}
       {activeTab === 'strategy' && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-          <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50/80 rounded-2xl border border-blue-200 space-y-2">
-            <span className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-extrabold uppercase tracking-wider">
-              RECOMMENDED STRATEGY: APPLY + COLD EMAIL
-            </span>
-            <p className="text-slate-800 text-sm font-semibold pt-1 leading-relaxed">
-              Exceptional technical match score of {matchScore}%. Candidate exhibits direct evidence across React, Next.js, Node.js, and PostgreSQL. Direct cold outreach is recommended to complement formal ATS submission.
-            </p>
-          </div>
+          {session?.strategy ? (
+            <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50/80 rounded-2xl border border-blue-200 space-y-2">
+              <span className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-extrabold uppercase tracking-wider">
+                RECOMMENDED STRATEGY: {session.strategy.strategy}
+              </span>
+              <p className="text-slate-800 text-sm font-semibold pt-1 leading-relaxed">
+                {session.strategy.primaryReasoning}
+              </p>
+            </div>
+          ) : (
+            <div className="text-slate-500 font-medium p-4 text-center">
+              Agent has not formulated a strategy yet. Run Orchestrator.
+            </div>
+          )}
         </div>
       )}
 
@@ -467,7 +495,7 @@ export default function JobDetailPage() {
               </div>
 
               <button
-                onClick={() => window.print()}
+                onClick={handleDownloadPDF}
                 className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" /> Download / Print
@@ -475,7 +503,13 @@ export default function JobDetailPage() {
             </div>
           </div>
 
+          <div ref={resumeRef}>
           {resumeMode === 'TAILORED' ? (
+            !tailoredResume ? (
+              <div className="p-8 text-center text-slate-500 font-medium">
+                Agent has not generated a tailored resume yet. Run Orchestrator.
+              </div>
+            ) : (
             /* FULL TAILORED RESUME DOCUMENT VIEW */
             <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 space-y-6 font-sans text-xs text-slate-800 print:bg-white print:p-0 print:border-none print:shadow-none">
               {/* Document Header */}
@@ -617,6 +651,7 @@ export default function JobDetailPage() {
                 </div>
               </div>
             </div>
+            )
           ) : (
             /* PROFESSIONAL ATS-FRIENDLY ORIGINAL RESUME VIEW */
             <div className="p-8 bg-slate-50 rounded-2xl border border-slate-200 space-y-6 font-sans text-xs text-slate-800 print:bg-white print:p-0 print:border-none print:shadow-none">
@@ -675,7 +710,7 @@ export default function JobDetailPage() {
                       <span className="text-slate-500 font-normal">{exp.startDate} – {exp.endDate || 'Present'}</span>
                     </div>
                     <ul className="list-disc list-inside text-slate-700 space-y-1 pl-1 font-medium">
-                      {exp.highlights.map((h, hi) => (
+                      {(exp.highlights || (exp.description ? [exp.description] : [])).map((h, hi) => (
                         <li key={hi}>{h}</li>
                       ))}
                     </ul>
@@ -692,7 +727,7 @@ export default function JobDetailPage() {
                 {candidateProfile?.projects.map((proj, pi) => (
                   <div key={pi} className="space-y-1">
                     <div className="flex justify-between font-bold text-slate-900">
-                      <span>{proj.title} <span className="text-slate-500 font-normal">({proj.technologies.join(', ')})</span></span>
+                      <span>{proj.title} <span className="text-slate-500 font-normal">({(proj.technologies || []).join(', ')})</span></span>
                     </div>
                     <p className="text-slate-700 font-medium">{proj.description}</p>
                   </div>
@@ -713,6 +748,7 @@ export default function JobDetailPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
 
@@ -762,12 +798,17 @@ export default function JobDetailPage() {
             </div>
           </div>
 
+          {!coldEmail ? (
+            <div className="p-8 text-center text-slate-500 font-medium">
+              Agent has not generated a personalized cold email yet. Run Orchestrator.
+            </div>
+          ) : (
           <div className="space-y-5 text-xs">
             {/* SUBJECT */}
             <div className="space-y-1">
               <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider block">SUBJECT</span>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 font-bold text-slate-900 text-sm">
-                {coldEmail?.subject || `${job.title} Outreach — ${job.company}`}
+                {coldEmail.subject}
               </div>
             </div>
 
@@ -775,17 +816,7 @@ export default function JobDetailPage() {
             <div className="space-y-1">
               <span className="text-slate-400 font-bold text-[10px] uppercase tracking-wider block">MESSAGE</span>
               <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 font-sans text-slate-800 leading-relaxed whitespace-pre-wrap font-medium text-xs">
-                {coldEmail?.body || `Hi Recruiting Team,
-
-I recently came across the ${job.title} position at ${job.company} and wanted to reach out directly.
-
-With experience in ${job.requirements.slice(0, 3).map(r => r.name).join(', ')}, I am very interested in contributing to ${job.company}'s engineering initiatives.
-
-I would welcome the opportunity to discuss how my background can add immediate value to ${job.company}.
-
-Best regards,
-${candidateProfile?.fullName || 'Candidate'}
-${candidateProfile?.email || ''}`}
+                {coldEmail.body}
               </div>
             </div>
 
@@ -826,6 +857,7 @@ ${candidateProfile?.email || ''}`}
               )}
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

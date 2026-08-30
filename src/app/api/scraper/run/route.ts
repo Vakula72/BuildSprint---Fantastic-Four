@@ -22,16 +22,16 @@ export async function POST(req: Request) {
     let result = { newJobsAdded: 0, totalJobs: 0, sources: [] as string[] };
 
     if (source === 'remoteok') {
-        const jobs = await jobScraper.scrapeRemoteOK();
+        const jobs = await jobScraper.scrapeRemoteOK(session.user.id);
         result = { newJobsAdded: jobs.length, totalJobs: jobs.length, sources: ['remoteok'] }; // Note: this doesn't deduplicate or save in the individual methods based on the prompt reqs, but scrapeAll does.
     } else if (source === 'hn') {
-        const jobs = await jobScraper.scrapeHNHiring();
+        const jobs = await jobScraper.scrapeHNHiring(session.user.id);
         result = { newJobsAdded: jobs.length, totalJobs: jobs.length, sources: ['hn'] };
     } else if (source === 'adzuna') {
-        const jobs = await jobScraper.scrapeAdzuna();
+        const jobs = await jobScraper.scrapeAdzuna(session.user.id);
          result = { newJobsAdded: jobs.length, totalJobs: jobs.length, sources: ['adzuna'] };
     } else {
-        result = await jobScraper.scrapeAll();
+        result = await jobScraper.scrapeAll(session.user.id);
     }
 
     return NextResponse.json(result);

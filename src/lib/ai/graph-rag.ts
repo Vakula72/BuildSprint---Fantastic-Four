@@ -117,7 +117,9 @@ Return the tailored resume strictly as a valid JSON object matching this TypeScr
       const parsed = JSON.parse(cleanJson) as FullTailoredResume;
       return parsed;
     } catch (error) {
-      console.error('Failed to generate resume with RAG, falling back...', error);
+      if (!(error instanceof GeminiNotConfiguredError)) {
+        console.error('Failed to generate resume with RAG, falling back...', error);
+      }
       throw error; // Will be caught by the agent to trigger fallback
     }
   }
@@ -178,7 +180,9 @@ Return the email content strictly as a valid JSON object matching this TypeScrip
       const parsed = JSON.parse(cleanJson) as ColdEmailContent;
       return parsed;
     } catch (error) {
-      console.error('Failed to generate email with RAG, falling back...', error);
+      if (!(error instanceof GeminiNotConfiguredError)) {
+        console.error('Failed to generate email with RAG, falling back...', error);
+      }
       throw error; // Will be caught by the agent to trigger fallback
     }
   }

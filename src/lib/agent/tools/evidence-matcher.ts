@@ -104,9 +104,9 @@ export class EvidenceMatcherEngine {
 
     // 3. Work Experience Search
     const matchedExp = candidate.experience.find(e =>
-      e.skillsUsed.some(s => s.toLowerCase().includes(reqLower) || reqLower.includes(s.toLowerCase())) ||
-      e.description.toLowerCase().includes(reqLower) ||
-      e.highlights.some(h => h.toLowerCase().includes(reqLower))
+      (e.skillsUsed || []).some(s => s.toLowerCase().includes(reqLower) || reqLower.includes(s.toLowerCase())) ||
+      (e.description || '').toLowerCase().includes(reqLower) ||
+      (e.highlights || []).some(h => h.toLowerCase().includes(reqLower))
     );
 
     // 4. Education Search

@@ -35,8 +35,23 @@ export default function Sidebar() {
 
   const fullName = profile?.fullName || 'Candidate';
   const initials = fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CA';
-  const headline = profile?.targetTitles?.[0] || profile?.headline || 'Software Engineer';
+  const headline = profile?.headline || profile?.targetTitles?.[0] || 'Professional';
   const location = profile?.targetLocations?.[0] || 'Remote';
+
+  // Calculate dynamic completeness
+  const completenessScore = (() => {
+    if (!profile) return 0;
+    let score = 0;
+    if (profile.fullName) score += 15;
+    if (profile.email) score += 10;
+    if (profile.headline) score += 10;
+    if (profile.summary) score += 15;
+    if (profile.skills && profile.skills.length > 0) score += 15;
+    if (profile.experience && profile.experience.length > 0) score += 10;
+    if (profile.projects && profile.projects.length > 0) score += 10;
+    if (profile.resumeFile) score += 15;
+    return score;
+  })();
 
   const links = [
     { name: 'Dashboard', href: '/', icon: Briefcase },
@@ -71,10 +86,10 @@ export default function Sidebar() {
           <div className="pt-1 border-t border-slate-200/60 space-y-1">
             <div className="flex justify-between text-[11px] font-semibold">
               <span className="text-slate-500">Profile Completeness</span>
-              <span className="text-blue-600 font-bold">85%</span>
+              <span className="text-blue-600 font-bold">{completenessScore}%</span>
             </div>
             <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full rounded-full w-[85%]"></div>
+              <div className={`bg-blue-600 h-full rounded-full transition-all duration-1000 w-[${completenessScore}%]`} style={{ width: `${completenessScore}%` }}></div>
             </div>
           </div>
         </div>
