@@ -21,14 +21,14 @@ export class JobHuntOrchestrator {
   private generationAgent = new ApplicationGenerationAgent();
   private memoryAgent = new MemoryFeedbackAgent();
 
-  public async executeJobPipeline(jobId: string, customInstruction?: string): Promise<AgentRunSession> {
+  public async executeJobPipeline(jobId: string, customInstruction?: string, userId?: string): Promise<AgentRunSession> {
     const workflowId = `wf_${Date.now()}`;
     const job = db.getJobById(jobId);
     if (!job) {
       throw new Error(`Job with ID ${jobId} not found.`);
     }
 
-    const candidate = db.getProfile();
+    const candidate = db.getProfile(userId);
     const traces: AgentActivityTrace[] = [];
 
     const logTrace = (agentName: string, task: string, status: AgentActivityTrace['status'], details: string, toolUsed?: string) => {
@@ -43,7 +43,7 @@ export class JobHuntOrchestrator {
         toolUsed
       };
       traces.push(trace);
-      db.addTrace(trace);
+      db.addTrace(trace, userId);
       return trace;
     };
 
@@ -95,14 +95,14 @@ export class JobHuntOrchestrator {
       jobId: job.id,
       jobTitle: job.title,
       company: job.company,
-      status: 'PENDING_APPROVAL',
+      status: requiresApproval ? 'PENDING_APPROVAL' : 'DRAFT',
       strategy: strategyRec.strategy,
       matchScore: matchAnalysis.overallScore,
-      recipientEmail: job.recruiterContact.email || DEMO_RECRUITER_EMAIL,
+      recipientEmail: job.recruiterContact.email,
       tailoredResume,
       coldEmail
     };
-    db.saveApplication(appRecord);
+    db.saveApplication(appRecord, userId);
 
     const session: AgentRunSession = {
       workflowId,
@@ -120,10 +120,10 @@ export class JobHuntOrchestrator {
     return session;
   }
 
-  public async approveAction(workflowId: string, customRecipientEmail?: string): Promise<JobApplicationRecord> {
+  public async approveAction(workflowId: string, customRecipientEmail?: string, userId?: string): Promise<JobApplicationRecord> {
     let session = db.getRunSession(workflowId);
     if (!session) {
-      const apps = db.getApplications();
+      const apps = db.getApplications(userId);
       const firstApp = apps[0];
       if (firstApp) {
         session = db.getRunSession(`wf_${firstApp.jobId}`) || {
@@ -139,7 +139,7 @@ export class JobHuntOrchestrator {
       throw new Error(`Workflow session ${workflowId} not found.`);
     }
 
-    const candidate = db.getProfile();
+    const candidate = db.getProfile(userId);
     const app = db.getApplicationByJobId(session.jobId);
     if (!app) {
       throw new Error(`Application record for job ${session.jobId} not found.`);
@@ -156,7 +156,7 @@ export class JobHuntOrchestrator {
     app.userApprovedAt = new Date().toISOString();
     app.userApprovedBy = candidate.email || DEMO_CANDIDATE_EMAIL;
     app.actionLog = `Human approved cold outreach for ${app.company}.`;
-    db.saveApplication(app);
+    db.saveApplication(app, userId);
 
     session.status = 'COMPLETED';
     db.setRunSession(session);
@@ -174,8 +174,8 @@ export class JobHuntOrchestrator {
     return app;
   }
 
-  public async sendDemoEmail(jobId: string): Promise<JobApplicationRecord> {
-    const candidate = db.getProfile();
+  public async sendDemoEmail(jobId: string, userId?: string): Promise<JobApplicationRecord> {
+    const candidate = db.getProfile(userId);
     const app = db.getApplicationByJobId(jobId);
     if (!app) {
       throw new Error(`Application record for job ${jobId} not found.`);
@@ -197,14 +197,14 @@ export class JobHuntOrchestrator {
       app.status = 'SENT';
       app.demoSentAt = emailResult.timestamp;
       if (app.coldEmail) {
-        app.coldEmail.status = 'SENT';
+        app.coldEmail.status = 'SENT_DEMO';
         app.coldEmail.sentAt = emailResult.timestamp;
       }
       app.actionLog = emailResult.message || 'Outreach email sent successfully.';
 
-      db.saveApplication(app);
+      db.saveApplication(app, userId);
 
-      db.addTrace({
+      db.addTrace({ userId, 
         workflowId: `send_${Date.now()}`,
         agentName: 'Job Hunt Orchestrator',
         task: 'Email Outreach Sent',
@@ -217,9 +217,9 @@ export class JobHuntOrchestrator {
       // Keep status as current state (APPROVED or PENDING_APPROVAL), do not falsely set to SENT
       app.actionLog = emailResult.message || 'Unable to send email. Please try again.';
 
-      db.saveApplication(app);
+      db.saveApplication(app, userId);
 
-      db.addTrace({
+      db.addTrace({ userId, 
         workflowId: `send_${Date.now()}`,
         agentName: 'Job Hunt Orchestrator',
         task: 'Email Outreach Attempt',

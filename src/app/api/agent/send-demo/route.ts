@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { orchestrator } from '@/lib/agent/orchestrator';
 import { db } from '@/lib/db/store';
+import { auth } from '@/auth';
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized', status: 'FAILED' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { jobId } = body;
@@ -24,7 +30,7 @@ export async function POST(req: Request) {
     }
 
     // Execute server-side Nodemailer email transport
-    const application = await orchestrator.sendDemoEmail(jobId);
+    const application = await orchestrator.sendDemoEmail(jobId, session.user.id);
 
     const isSuccess = application.status === 'SENT';
 

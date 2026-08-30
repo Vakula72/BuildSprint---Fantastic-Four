@@ -1,9 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { evidenceEngine } from '../src/lib/agent/tools/evidence-matcher';
 import { ApplicationStrategistAgent, ApplicationGenerationAgent } from '../src/lib/agent/agents/specialized-agents';
 import { JobHuntOrchestrator } from '../src/lib/agent/orchestrator';
 import { INITIAL_CANDIDATE_PROFILE, INITIAL_JOBS } from '../src/lib/db/store';
 import { Job } from '../src/lib/types';
+import { seedSync } from '../src/lib/db/seed';
+
+beforeAll(() => {
+  seedSync();
+});
 
 describe('SkillPatch Adaptive Job Application Skill Validation', () => {
   const candidate = INITIAL_CANDIDATE_PROFILE;

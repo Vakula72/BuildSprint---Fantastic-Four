@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/store';
+import { auth } from '@/auth';
 
 export async function GET() {
-  const traces = db.getTraces();
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const traces = db.getTraces(session.user.id);
   return NextResponse.json(traces);
 }

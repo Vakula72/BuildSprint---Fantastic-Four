@@ -8,6 +8,29 @@ import {
   DEMO_CANDIDATE_EMAIL,
   DEMO_RECRUITER_EMAIL
 } from '@/lib/types';
+import client from './client';
+import { jobs, candidateProfiles, applications, skillGaps, agentTraces } from './schema';
+import { eq, desc } from 'drizzle-orm';
+import crypto from 'crypto';
+import { seedSync } from './seed';
+
+// Ensure synchronous seeding if it's node environment for tests
+if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
+    try {
+        seedSync();
+    } catch (e) {
+        console.error(e);
+    }
+} else {
+    // For production next.js the IIFE below runs, but tests might execute tests before IIFE finishes
+    (async () => {
+      try {
+        seedSync();
+      } catch (err) {
+        console.error("Failed to seed database on startup:", err);
+      }
+    })();
+}
 
 export const INITIAL_CANDIDATE_PROFILE: CandidateProfile = {
   id: 'cand_01',
@@ -42,25 +65,25 @@ B.S. Computer Science | SRM University AP | Graduation: 2026 | GPA: 3.88/4.0
 
 EXPERIENCE
 Software Engineering Intern | ScaleData Systems | May 2025 - Aug 2025
-• Developed scalable REST API microservices and monitoring dashboards for telemetry analytics using Node.js, Next.js, and PostgreSQL.
-• Optimized PostgreSQL query response times by 35% using index tuning and query refactoring.
-• Built 12+ reusable React UI components adopting internal design design-systems.
+  Developed scalable REST API microservices and monitoring dashboards for telemetry analytics using Node.js, Next.js, and PostgreSQL.
+  Optimized PostgreSQL query response times by 35% using index tuning and query refactoring.
+  Built 12+ reusable React UI components adopting internal design design-systems.
 
 PROJECTS
 1. Agentic Workflow Copilot
-• Built an autonomous multi-agent task execution system with step planning, human-in-the-loop review, and evaluation traces.
-• Decreased task automation setup time by 60%; handles 50+ tool calls per session safely.
-• Technologies: TypeScript, Next.js, Node.js, Tailwind CSS, Google Gemini API
+  Built an autonomous multi-agent task execution system with step planning, human-in-the-loop review, and evaluation traces.
+  Decreased task automation setup time by 60%; handles 50+ tool calls per session safely.
+  Technologies: TypeScript, Next.js, Node.js, Tailwind CSS, Google Gemini API
 
 2. Distributed Log Streaming Engine
-• High-performance real-time log ingester built with Node.js and C++ native bindings for processing structured JSON telemetry.
-• Processed 10,000 logs/second with sub-15ms parsing latency.
-• Technologies: Node.js, C++, TypeScript, PostgreSQL, Docker
+  High-performance real-time log ingester built with Node.js and C++ native bindings for processing structured JSON telemetry.
+  Processed 10,000 logs/second with sub-15ms parsing latency.
+  Technologies: Node.js, C++, TypeScript, PostgreSQL, Docker
 
 3. E-Commerce Microservices Platform
-• Full-stack online store with JWT authentication, cart state management, SQL database integration, and Stripe sandbox checkout.
-• 100% test coverage on API payment pipelines with zero dropped orders.
-• Technologies: React, Next.js, Node.js, PostgreSQL, Tailwind CSS`
+  Full-stack online store with JWT authentication, cart state management, SQL database integration, and Stripe sandbox checkout.
+  100% test coverage on API payment pipelines with zero dropped orders.
+  Technologies: React, Next.js, Node.js, PostgreSQL, Tailwind CSS`
   },
   education: [
     {
@@ -373,7 +396,7 @@ export const INITIAL_APPLICATIONS: JobApplicationRecord[] = [
       senderEmail: INITIAL_CANDIDATE_PROFILE.email,
       recipientEmail: DEMO_RECRUITER_EMAIL,
       recipientTitle: 'Lead Technical Recruiter',
-      subject: `${INITIAL_CANDIDATE_PROFILE.fullName} — Full Stack Software Engineer Outreach (Nexus Cloud Platforms)`,
+      subject: `${INITIAL_CANDIDATE_PROFILE.fullName} - Full Stack Software Engineer Outreach (Nexus Cloud Platforms)`,
       body: `Hi Sarah,
 
 I recently came across the Full Stack Software Engineer role at Nexus Cloud Platforms and wanted to reach out directly. Given Nexus's recent expansion in developer orchestration software, I am very excited about your product engineering direction.
@@ -416,31 +439,77 @@ export const INITIAL_SKILL_GAPS: SkillGapInsight[] = [
 ];
 
 class DataStore {
-  private profile: CandidateProfile = INITIAL_CANDIDATE_PROFILE;
-  private jobs: Job[] = [...INITIAL_JOBS];
-  private applications: JobApplicationRecord[] = [...INITIAL_APPLICATIONS];
-  private traces: AgentActivityTrace[] = [];
+  // In-memory sessions (these don't necessarily need to be persisted to sqlite 
+  // if they are strictly run sessions, but we could if we wanted.
+  // Given instructions, we only need to persist the core tables requested.
+  // We keep runSessions in memory as it's typically volatile execution state)
   private runSessions: Map<string, AgentRunSession> = new Map();
-  private skillGaps: SkillGapInsight[] = [...INITIAL_SKILL_GAPS];
 
   constructor() {
-    this.addTrace({
-      workflowId: 'init',
-      agentName: 'Job Hunt Orchestrator',
-      task: 'Candidate Profile Loaded',
-      status: 'SUCCESS',
-      details: `Loaded candidate profile for ${this.profile.fullName || 'User'} (${this.profile.email}) with candidate evidence metadata.`
-    });
+    try {
+      // Force sync execution of seed for tests
+      // better-sqlite3 is synchronous anyway, so we can just call the synchronous logic
+      // but seed() is async. We will just leave it.
+      
+      // Create initial trace if none exist
+      const tracesCount = client.select().from(agentTraces).all().length;
+      if (tracesCount === 0) {
+        this.addTrace({
+          workflowId: 'init',
+          agentName: 'Job Hunt Orchestrator',
+          task: 'Candidate Profile Loaded',
+          status: 'SUCCESS',
+          details: `Loaded candidate profile for ${this.getProfile().fullName || 'User'} (${this.getProfile().email}) with candidate evidence metadata.`
+        });
+      }
+    } catch (err) {
+      // ignore
+    }
   }
 
-  getProfile(): CandidateProfile {
-    return this.profile;
+  getProfile(userId?: string): CandidateProfile {
+    const profile = client.select().from(candidateProfiles)
+        .where(userId ? eq(candidateProfiles.userId, userId) : undefined)
+        .limit(1)
+        .get();
+    if (!profile) return INITIAL_CANDIDATE_PROFILE;
+    return {
+      ...profile,
+      targetTitles: profile.targetTitles ? (typeof profile.targetTitles === 'string' ? JSON.parse(profile.targetTitles) : profile.targetTitles) : [],
+      targetLocations: profile.targetLocations ? (typeof profile.targetLocations === 'string' ? JSON.parse(profile.targetLocations) : profile.targetLocations) : [],
+      resumeFile: profile.resumeFile ? (typeof profile.resumeFile === 'string' ? JSON.parse(profile.resumeFile) : profile.resumeFile) : undefined,
+      education: profile.education ? (typeof profile.education === 'string' ? JSON.parse(profile.education) : profile.education) : [],
+      skills: profile.skills ? (typeof profile.skills === 'string' ? JSON.parse(profile.skills) : profile.skills) : [],
+      projects: profile.projects ? (typeof profile.projects === 'string' ? JSON.parse(profile.projects) : profile.projects) : [],
+      experience: profile.experience ? (typeof profile.experience === 'string' ? JSON.parse(profile.experience) : profile.experience) : []
+    } as unknown as CandidateProfile;
   }
 
-  updateProfile(profile: CandidateProfile): CandidateProfile {
-    this.profile = profile;
+  updateProfile(profile: CandidateProfile, userId?: string): CandidateProfile {
+    const current = this.getProfile(userId);
+    if (!current || current.id === INITIAL_CANDIDATE_PROFILE.id && !userId) {
+       // if we are updating initial mock profile for anonymous
+       client.update(candidateProfiles)
+        .set({
+            ...profile,
+            updatedAt: new Date().toISOString()
+        })
+        .where(eq(candidateProfiles.id, current.id))
+        .run();
+    } else if (current.id) {
+       client.update(candidateProfiles)
+        .set({
+            ...profile,
+            updatedAt: new Date().toISOString()
+        })
+        .where(eq(candidateProfiles.id, current.id))
+        .run();
+    }
+    
     // Update candidate identity across any existing initial application record
-    this.applications = this.applications.map(app => {
+    const allApps = this.getApplications(userId);
+    allApps.forEach(app => {
+      let updated = false;
       if (app.tailoredResume) {
         app.tailoredResume.candidateHeader = {
           fullName: profile.fullName || 'Candidate',
@@ -449,26 +518,50 @@ class DataStore {
           location: profile.targetLocations[0] || 'Remote',
           links: [profile.portfolioUrl, profile.githubUrl, profile.linkedinUrl].filter(Boolean) as string[]
         };
+        updated = true;
       }
       if (app.coldEmail) {
         app.coldEmail.senderEmail = profile.email || DEMO_CANDIDATE_EMAIL;
-        app.coldEmail.subject = `${profile.fullName || 'Candidate'} — ${app.jobTitle} Outreach (${app.company})`;
+        app.coldEmail.subject = `${profile.fullName || 'Candidate'} - ${app.jobTitle} Outreach (${app.company})`;
+        updated = true;
       }
-      return app;
+      if (updated) {
+        this.saveApplication(app, userId);
+      }
     });
-    return this.profile;
+
+    return profile;
   }
 
   getJobs(): Job[] {
-    return this.jobs;
+    const records = client.select().from(jobs).all();
+    return records.map(j => ({
+      ...j,
+      requirements: j.requirements ? (typeof j.requirements === 'string' ? JSON.parse(j.requirements) : j.requirements) : [],
+      recruiterContact: j.recruiterContact ? (typeof j.recruiterContact === 'string' ? JSON.parse(j.recruiterContact) : j.recruiterContact) : null,
+      companyInfo: j.companyInfo ? (typeof j.companyInfo === 'string' ? JSON.parse(j.companyInfo) : j.companyInfo) : null,
+    })) as unknown as Job[];
   }
 
   getJobById(id: string): Job | undefined {
-    return this.jobs.find(j => j.id === id);
+    const job = client.select().from(jobs).where(eq(jobs.id, id)).get();
+    if (!job) return undefined;
+    return {
+      ...job,
+      requirements: job.requirements ? (typeof job.requirements === 'string' ? JSON.parse(job.requirements) : job.requirements) : [],
+      recruiterContact: job.recruiterContact ? (typeof job.recruiterContact === 'string' ? JSON.parse(job.recruiterContact) : job.recruiterContact) : null,
+      companyInfo: job.companyInfo ? (typeof job.companyInfo === 'string' ? JSON.parse(job.companyInfo) : job.companyInfo) : null,
+    } as unknown as Job;
   }
 
   addJob(job: Job): Job {
-    this.jobs.unshift(job);
+    client.insert(jobs).values({
+      ...job,
+      scrapedAt: new Date().toISOString()
+    }).run();
+    
+    // We don't link jobs to users natively right now based on schema (jobs table has no user_id)
+    // Trace goes to default_user_1 if no user context, or we can just omit it
     this.addTrace({
       workflowId: `job_${Date.now()}`,
       agentName: 'Opportunity Discovery Agent',
@@ -479,36 +572,99 @@ class DataStore {
     return job;
   }
 
-  getApplications(): JobApplicationRecord[] {
-    return this.applications;
+  getApplications(userId?: string): JobApplicationRecord[] {
+    const rawApps = client.select().from(applications)
+      .where(userId ? eq(applications.userId, userId) : undefined)
+      .all();
+    
+    // Fetch associated job details to populate jobTitle and company since the interface expects them 
+    // even though they aren't directly in the table (we just have jobId).
+    // Let's manually populate them as the original did
+    return rawApps.map(app => {
+      const job = this.getJobById(app.jobId);
+      return {
+        ...app,
+        tailoredResume: app.tailoredResume ? (typeof app.tailoredResume === 'string' ? JSON.parse(app.tailoredResume) : app.tailoredResume) : undefined,
+        coldEmail: app.coldEmail ? (typeof app.coldEmail === 'string' ? JSON.parse(app.coldEmail) : app.coldEmail) : undefined,
+        jobTitle: job?.title || 'Unknown Job',
+        company: job?.company || 'Unknown Company'
+      };
+    }) as unknown as JobApplicationRecord[];
   }
 
   getApplicationByJobId(jobId: string): JobApplicationRecord | undefined {
-    return this.applications.find(a => a.jobId === jobId);
+    const app = client.select().from(applications).where(eq(applications.jobId, jobId)).get();
+    if (!app) return undefined;
+    
+    const job = this.getJobById(jobId);
+    return {
+      ...app,
+      tailoredResume: app.tailoredResume ? (typeof app.tailoredResume === 'string' ? JSON.parse(app.tailoredResume) : app.tailoredResume) : undefined,
+      coldEmail: app.coldEmail ? (typeof app.coldEmail === 'string' ? JSON.parse(app.coldEmail) : app.coldEmail) : undefined,
+      jobTitle: job?.title || 'Unknown Job',
+      company: job?.company || 'Unknown Company'
+    } as unknown as JobApplicationRecord;
   }
 
-  saveApplication(app: JobApplicationRecord): JobApplicationRecord {
-    const idx = this.applications.findIndex(a => a.id === app.id || a.jobId === app.jobId);
-    if (idx >= 0) {
-      this.applications[idx] = app;
+  saveApplication(app: JobApplicationRecord, userId?: string): JobApplicationRecord {
+    const existing = client.select().from(applications).where(eq(applications.id, app.id)).get() 
+      || client.select().from(applications).where(eq(applications.jobId, app.jobId)).get();
+    
+    if (existing) {
+      client.update(applications)
+        .set({
+          status: app.status,
+          strategy: app.strategy,
+          matchScore: app.matchScore,
+          recipientEmail: app.recipientEmail,
+          tailoredResume: app.tailoredResume,
+          coldEmail: app.coldEmail,
+          userApprovedAt: app.userApprovedAt,
+          userApprovedBy: app.userApprovedBy,
+          demoSentAt: app.demoSentAt,
+          actionLog: app.actionLog
+        })
+        .where(eq(applications.id, existing.id))
+        .run();
     } else {
-      this.applications.unshift(app);
+      client.insert(applications).values({
+        id: app.id,
+        userId: userId || 'default_user_1',
+        jobId: app.jobId,
+        status: app.status,
+        strategy: app.strategy,
+        matchScore: app.matchScore,
+        recipientEmail: app.recipientEmail,
+        tailoredResume: app.tailoredResume,
+        coldEmail: app.coldEmail,
+        userApprovedAt: app.userApprovedAt,
+        userApprovedBy: app.userApprovedBy,
+        demoSentAt: app.demoSentAt,
+        actionLog: app.actionLog,
+        createdAt: new Date().toISOString()
+      }).run();
     }
     return app;
   }
 
-  addTrace(trace: Omit<AgentActivityTrace, 'id' | 'timestamp'>): AgentActivityTrace {
-    const newTrace: AgentActivityTrace = {
+  addTrace(trace: Omit<AgentActivityTrace, 'id' | 'timestamp'>, userId?: string): AgentActivityTrace {
+    const newTrace = {
       ...trace,
-      id: `tr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      id: `tr_${Date.now()}_${crypto.randomBytes(2).toString('hex')}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      userId: userId || 'default_user_1'
     };
-    this.traces.unshift(newTrace);
+    
+    client.insert(agentTraces).values(newTrace).run();
+    
     return newTrace;
   }
 
-  getTraces(): AgentActivityTrace[] {
-    return this.traces;
+  getTraces(userId?: string): AgentActivityTrace[] {
+    return client.select().from(agentTraces)
+      .where(userId ? eq(agentTraces.userId, userId) : undefined)
+      .orderBy(desc(agentTraces.id))
+      .all() as unknown as AgentActivityTrace[];
   }
 
   setRunSession(session: AgentRunSession) {
@@ -519,8 +675,10 @@ class DataStore {
     return this.runSessions.get(workflowId);
   }
 
-  getSkillGaps(): SkillGapInsight[] {
-    return this.skillGaps;
+  getSkillGaps(userId?: string): SkillGapInsight[] {
+    return client.select().from(skillGaps)
+      .where(userId ? eq(skillGaps.userId, userId) : undefined)
+      .all() as unknown as SkillGapInsight[];
   }
 }
 

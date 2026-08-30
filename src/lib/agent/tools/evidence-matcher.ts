@@ -12,7 +12,7 @@ export class EvidenceMatcherEngine {
   /**
    * Matches candidate evidence against a set of job requirements
    */
-  public analyzeJobMatch(candidate: CandidateProfile, job: Job): JobMatchAnalysis {
+  public analyzeJobMatch(candidate: CandidateProfile, job: Job): JobMatchAnalysis | Promise<JobMatchAnalysis> {
     const evidenceMap: JobEvidenceMatch[] = job.requirements.map(req =>
       this.evaluateRequirement(candidate, req)
     );
@@ -72,7 +72,7 @@ export class EvidenceMatcherEngine {
     };
   }
 
-  private evaluateRequirement(candidate: CandidateProfile, req: JobRequirement): JobEvidenceMatch {
+  protected evaluateRequirement(candidate: CandidateProfile, req: JobRequirement): JobEvidenceMatch {
     const reqLower = req.name.toLowerCase();
 
     // 0. Handle Unknown / Ambiguous Requirements
@@ -163,4 +163,16 @@ export class EvidenceMatcherEngine {
   }
 }
 
-export const evidenceEngine = new EvidenceMatcherEngine();
+// Lazy load the graph matcher to avoid circular deps or init errors
+let instance: EvidenceMatcherEngine;
+
+if (process.env.NEO4J_URI) {
+  // Use CommonJS require or just import normally since we are in TS 
+  // and Next.js can handle it
+  const { GraphEvidenceMatcher } = require('@/lib/graph/evidence-graph');
+  instance = new GraphEvidenceMatcher();
+} else {
+  instance = new EvidenceMatcherEngine();
+}
+
+export const evidenceEngine = instance;

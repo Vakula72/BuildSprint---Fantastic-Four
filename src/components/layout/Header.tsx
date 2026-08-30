@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import {
   Sparkles,
   User,
@@ -18,13 +19,23 @@ import { CandidateProfile } from '@/lib/types';
 export default function Header() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
+  const [isAuth, setIsAuth] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     fetch('/api/profile')
-      .then((res) => res.json())
-      .then((data) => setProfile(data))
+      .then((res) => {
+        if (res.status === 401) {
+          setIsAuth(false);
+          return null;
+        }
+        setIsAuth(true);
+        return res.json();
+      })
+      .then((data) => {
+        if (data) setProfile(data);
+      })
       .catch(() => {});
   }, []);
 
@@ -42,8 +53,8 @@ export default function Header() {
   const fullName = profile?.fullName || 'Candidate';
   const initials = fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CA';
   const email = profile?.email || '';
-  const headline = profile?.targetTitles[0] || profile?.headline || 'Software Engineer';
-  const location = profile?.targetLocations[0] || 'Remote';
+  const headline = profile?.targetTitles?.[0] || profile?.headline || 'Software Engineer';
+  const location = profile?.targetLocations?.[0] || 'Remote';
   const resumeName = profile?.resumeFile?.fileName || 'Resume uploaded';
 
   return (
@@ -81,24 +92,33 @@ export default function Header() {
 
         {/* Candidate Interactive Profile Popover */}
         <div className="relative" ref={popoverRef}>
-          <button
-            onClick={() => setPopoverOpen(!popoverOpen)}
-            className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none"
-          >
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center border border-blue-200 shadow-2xs">
-              {initials}
-            </div>
-            <div className="hidden md:block">
-              <div className="flex items-center gap-1">
-                <p className="font-bold text-slate-900 text-xs leading-tight">{fullName}</p>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
+          {!isAuth ? (
+            <Link 
+              href="/login" 
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors"
+            >
+              Log in
+            </Link>
+          ) : (
+            <button
+              onClick={() => setPopoverOpen(!popoverOpen)}
+              className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-90 transition-opacity cursor-pointer text-left focus:outline-none"
+            >
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center border border-blue-200 shadow-2xs">
+                {initials}
               </div>
-              <p className="text-slate-500 text-[10px] truncate max-w-[120px]">{headline}</p>
-            </div>
-          </button>
+              <div className="hidden md:block">
+                <div className="flex items-center gap-1">
+                  <p className="font-bold text-slate-900 text-xs leading-tight">{fullName}</p>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </div>
+                <p className="text-slate-500 text-[10px] truncate max-w-[120px]">{headline}</p>
+              </div>
+            </button>
+          )}
 
           {/* Dropdown Popover */}
-          {popoverOpen && (
+          {popoverOpen && isAuth && (
             <div className="absolute right-0 top-11 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 space-y-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">
@@ -121,17 +141,7 @@ export default function Header() {
                   <span>{location}</span>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 space-y-1">
-                  <div className="flex justify-between text-[11px] font-bold">
-                    <span className="text-slate-500">Profile Completeness</span>
-                    <span className="text-blue-600">85%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-blue-600 h-full rounded-full w-[85%]"></div>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between text-[11px]">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                   <span className="text-slate-500">Source Resume:</span>
                   <span className="font-bold text-emerald-600 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> {resumeName}
@@ -152,11 +162,11 @@ export default function Header() {
                 <button
                   onClick={() => {
                     setPopoverOpen(false);
-                    router.push('/profile#resume');
+                    signOut({ callbackUrl: '/login' });
                   }}
-                  className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs transition-colors shadow-2xs"
+                  className="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs transition-colors shadow-2xs"
                 >
-                  Manage Resume
+                  Sign Out
                 </button>
               </div>
             </div>

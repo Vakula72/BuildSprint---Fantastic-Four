@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/store';
 import { CandidateProfile } from '@/lib/types';
+import { auth } from '@/auth';
 
 export async function POST(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { fileName, textContent } = body;
@@ -11,7 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File name is required' }, { status: 400 });
     }
 
-    const currentProfile = db.getProfile();
+    const currentProfile = db.getProfile(session.user.id);
 
     // Trace 1: Upload event
     db.addTrace({
@@ -21,7 +27,7 @@ export async function POST(req: Request) {
       status: 'INFO',
       details: `Received resume file '${fileName}'. Initiating automated text extraction and qualification parsing...`,
       toolUsed: 'resume-parser'
-    });
+    }, session.user.id);
 
     const candidateSkills = currentProfile.skills.map(s => s.name).join(', ');
     const candidateProjects = currentProfile.projects.map(p => p.title).join(', ');
@@ -37,7 +43,7 @@ export async function POST(req: Request) {
       status: 'SUCCESS',
       details: `Successfully parsed '${fileName}'. Extracted 11 verified technical skills, 3 projects, and 2 education/work experience records. Zero unsupported claims detected.`,
       toolUsed: 'resume-parser'
-    });
+    }, session.user.id);
 
     const updatedProfile: CandidateProfile = {
       ...currentProfile,
@@ -50,7 +56,7 @@ export async function POST(req: Request) {
       }
     };
 
-    db.updateProfile(updatedProfile);
+    db.updateProfile(updatedProfile, session.user.id);
 
     // Trace 3: Evidence updated
     db.addTrace({
@@ -59,7 +65,7 @@ export async function POST(req: Request) {
       task: 'Candidate Evidence Base Updated',
       status: 'SUCCESS',
       details: `Updated primary candidate evidence base from '${fileName}'. All future job matches will cross-reference this uploaded resume.`
-    });
+    }, session.user.id);
 
     return NextResponse.json({
       success: true,
