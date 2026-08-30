@@ -169,7 +169,7 @@ let instance: EvidenceMatcherEngine;
 if (process.env.NEO4J_URI) {
   // Use CommonJS require or just import normally since we are in TS 
   // and Next.js can handle it
-  const { GraphEvidenceMatcher } = require('@/lib/graph/evidence-graph');
+  const { GraphEvidenceMatcher } = require('../../graph/evidence-graph');
   instance = new GraphEvidenceMatcher();
 } else {
   instance = new EvidenceMatcherEngine();

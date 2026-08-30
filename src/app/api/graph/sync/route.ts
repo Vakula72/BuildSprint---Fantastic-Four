@@ -1,19 +1,24 @@
 import { NextResponse } from 'next/server';
-import { graphSyncService } from '@/lib/graph/sync';
-import { auth } from '@/auth';
+import { graphSync } from '@/lib/graph/sync';
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    await graphSyncService.syncAll();
-    return NextResponse.json({ success: true, message: 'Graph sync completed successfully.' });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Unknown error occurred during graph sync.';
-    console.error('Graph sync failed:', error);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // Simple authentication check for the hackathon
+    const authHeader = req.headers.get('authorization');
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET || 'sync-secret-key'}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Trigger full sync
+    const success = await graphSync.syncAll();
+
+    if (success) {
+      return NextResponse.json({ message: 'Graph sync completed successfully' });
+    } else {
+      return NextResponse.json({ error: 'Graph sync failed' }, { status: 500 });
+    }
+  } catch (error) {
+    console.error('API /api/graph/sync error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

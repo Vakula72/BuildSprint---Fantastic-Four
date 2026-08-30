@@ -6,12 +6,13 @@ import { redirect } from 'next/navigation';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const errorMessage = searchParams?.error === 'CredentialsSignin' 
-    ? 'Invalid email or password.' 
-    : searchParams?.error 
-      ? 'An error occurred during sign in.' 
+  const params = await searchParams;
+  const errorMessage = params?.error === 'CredentialsSignin'
+    ? 'Invalid email or password.'
+    : params?.error
+      ? 'An error occurred during sign in.'
       : null;
 
   async function loginAction(formData: FormData) {

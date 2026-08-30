@@ -1,29 +1,57 @@
-import neo4j from 'neo4j-driver';
+import neo4j, { Driver, Session } from 'neo4j-driver';
 
-const uri = process.env.NEO4J_URI || 'neo4j+s://your-instance.databases.neo4j.io';
-const user = process.env.NEO4J_USERNAME || 'neo4j';
-const password = process.env.NEO4J_PASSWORD || 'your_password';
+let driver: Driver | null = null;
 
-let driver: neo4j.Driver | null = null;
+const NEO4J_URI = process.env.NEO4J_URI;
+const NEO4J_USERNAME = process.env.NEO4J_USERNAME;
+const NEO4J_PASSWORD = process.env.NEO4J_PASSWORD;
 
-try {
-  if (process.env.NEO4J_URI) {
-    driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
+/**
+ * Initializes and returns a Neo4j driver singleton.
+ * If credentials are missing, it returns null and logs a warning.
+ */
+export function getDriver(): Driver | null {
+  if (driver) {
+    return driver;
   }
-} catch (error) {
-  console.warn('Failed to initialize Neo4j driver:', error);
-}
 
-export function getSession() {
-  if (!driver) {
-    console.warn('Neo4j driver not initialized. Please configure NEO4J_URI.');
+  if (!NEO4J_URI || !NEO4J_USERNAME || !NEO4J_PASSWORD) {
+    console.warn('Neo4j credentials are not set. Graph matching will be unavailable.');
     return null;
   }
-  return driver.session();
+
+  try {
+    driver = neo4j.driver(
+      NEO4J_URI,
+      neo4j.auth.basic(NEO4J_USERNAME, NEO4J_PASSWORD),
+      {
+        disableLosslessIntegers: true, // Simplified number handling for TS
+        maxConnectionPoolSize: 50,
+      }
+    );
+    return driver;
+  } catch (error) {
+    console.error('Failed to initialize Neo4j driver:', error);
+    return null;
+  }
 }
 
-export async function closeDriver() {
+/**
+ * Gets a new session from the driver. 
+ * Returns null if the driver cannot be initialized.
+ */
+export function getSession(): Session | null {
+  const drv = getDriver();
+  if (!drv) return null;
+  return drv.session();
+}
+
+/**
+ * Closes the Neo4j driver. Should be called on application shutdown.
+ */
+export async function closeDriver(): Promise<void> {
   if (driver) {
     await driver.close();
+    driver = null;
   }
 }
