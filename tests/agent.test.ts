@@ -55,22 +55,22 @@ describe('SkillPatch Adaptive Job Application Skill Validation', () => {
   });
 
   // TEST D: Candidate has a relevant project selected for tailored resume generation
-  it('TEST D: Candidate relevant project selected for tailored resume generation', () => {
+  it('TEST D: Candidate relevant project selected for tailored resume generation', async () => {
     const job = INITIAL_JOBS[0];
     const analysis = evidenceEngine.analyzeJobMatch(candidate, job);
 
-    const tailoredResume = generator.generateTailoredResume(candidate, job, analysis);
+    const tailoredResume = await generator.generateTailoredResume(candidate, job, analysis);
     expect(tailoredResume.featuredProjects.length).toBeGreaterThan(0);
     expect(tailoredResume.featuredProjects[0].title).toBe('Agentic Workflow Copilot');
     expect(tailoredResume.featuredProjects[0].bulletPoints.length).toBeGreaterThan(0);
   });
 
   // TEST E: Cold-email generation must remain grounded in verified evidence
-  it('TEST E: Cold-email generation grounded in verified evidence', () => {
+  it('TEST E: Cold-email generation grounded in verified evidence', async () => {
     const job = INITIAL_JOBS[0];
     const analysis = evidenceEngine.analyzeJobMatch(candidate, job);
 
-    const email = generator.generateColdEmail(candidate, job, analysis);
+    const email = await generator.generateColdEmail(candidate, job, analysis);
     expect(email.body).toContain(candidate.fullName);
     expect(email.body).toContain(candidate.projects[0].title);
     expect(email.whyGenerated.candidateEvidence).toBeDefined();

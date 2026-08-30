@@ -75,12 +75,12 @@ export class JobHuntOrchestrator {
 
     if (strategyRec.strategy === 'APPLY' || strategyRec.strategy === 'APPLY_AND_OUTREACH') {
       logTrace('Application Generation Agent', 'Tailor Full Resume', 'SUCCESS', `Generated full tailored resume aligning summary, skills, and project priority to ${job.company}.`, 'resume-tailor');
-      tailoredResume = this.generationAgent.generateTailoredResume(candidate, job, matchAnalysis);
+      tailoredResume = await this.generationAgent.generateTailoredResume(candidate, job, matchAnalysis);
     }
 
     if (strategyRec.strategy === 'OUTREACH' || strategyRec.strategy === 'APPLY_AND_OUTREACH') {
       logTrace('Application Generation Agent', 'Cold Email Personalization', 'SUCCESS', `Drafted personalized outreach email tailored to ${job.company}.`, 'cold-email-gen');
-      coldEmail = this.generationAgent.generateColdEmail(candidate, job, matchAnalysis);
+      coldEmail = await this.generationAgent.generateColdEmail(candidate, job, matchAnalysis);
     }
 
     // Step 6: Human Approval Gatekeeping

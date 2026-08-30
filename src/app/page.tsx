@@ -36,16 +36,23 @@ export default function DashboardPage() {
           fetch('/api/jobs'),
           fetch('/api/applications')
         ]);
+
+        // Redirect to login if not authenticated
+        if (jobsRes.status === 401 || appRes.status === 401) {
+          router.push('/login');
+          return;
+        }
+
         const jobsData = await jobsRes.json();
         const appData = await appRes.json();
-        setJobs(jobsData);
-        setApplications(appData);
+        if (Array.isArray(jobsData)) setJobs(jobsData);
+        if (Array.isArray(appData)) setApplications(appData);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
       }
     }
     loadData();
-  }, []);
+  }, [router]);
 
   function handleLetAgentSearch() {
     setAgentSearching(true);
