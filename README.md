@@ -151,9 +151,9 @@ Students and job seekers face repetitive application processes, generic ATS resu
 ### Prerequisites
 - Node.js v18+
 - npm
-- Neo4j AuraDB account (free) — optional, falls back to string matching
-- Google Gemini API key (free) — optional, falls back to templates
-- Adzuna API credentials (free) — optional
+- Neo4j Desktop (installed locally) **OR** Neo4j AuraDB free account — optional, falls back to string matching
+- Google Gemini API key (free at [aistudio.google.com](https://aistudio.google.com)) — optional, falls back to templates
+- Adzuna API credentials (free at [developer.adzuna.com](https://developer.adzuna.com)) — optional
 
 ### 1. Clone & Install
 ```bash
@@ -164,45 +164,62 @@ npm install --legacy-peer-deps
 
 ### 2. Configure `.env.local`
 ```env
-# NextAuth (required)
+# NextAuth (required — generate with: openssl rand -hex 32)
 AUTH_SECRET=your_random_32_char_secret_here
 NEXTAUTH_URL=http://localhost:3000
 
-# Google OAuth (optional)
+# Google OAuth (optional — console.cloud.google.com)
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # Neo4j Knowledge Graph (optional — falls back to string matching)
-NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+# Option A: Local Neo4j Desktop
+NEO4J_URI=bolt://localhost:7687
 NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your_password
+NEO4J_PASSWORD=your_neo4j_desktop_password
 
-# Gemini AI (optional — falls back to template generation)
+# Option B: Neo4j AuraDB (cloud free tier — neo4j.com/cloud/aura)
+# NEO4J_URI=neo4j+s://xxxxxxxx.databases.neo4j.io
+# NEO4J_USERNAME=neo4j
+# NEO4J_PASSWORD=your_aura_password
+
+# Gemini AI (optional — aistudio.google.com → Get API Key)
 GEMINI_API_KEY=your_gemini_api_key
 
-# SMTP Email (optional — falls back to console log DEMO MODE)
+# SMTP Email (optional — Gmail: myaccount.google.com → Security → App Passwords)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your@gmail.com
 SMTP_APP_PASSWORD=xxxx xxxx xxxx xxxx
 
-# Adzuna Job Scraper (optional — sign up at developer.adzuna.com)
+# Adzuna Job Scraper (optional — developer.adzuna.com → Free signup)
 ADZUNA_APP_ID=your_app_id
 ADZUNA_API_KEY=your_api_key
 ```
 
-### 3. Run Tests
+### 3. Neo4j Desktop Setup (Local)
+If using Neo4j Desktop:
+1. Open **Neo4j Desktop** → start your database instance
+2. Default connection: `bolt://localhost:7687`
+3. Open Neo4j Browser at `http://localhost:7474` to verify it's running
+4. Trigger graph sync after starting the server:
+```bash
+curl -X POST http://localhost:3000/api/graph/sync
+```
+
+### 4. Run Tests
 ```bash
 npx vitest run
 # ✓ 8/8 tests passing
 ```
 
-### 4. Start Dev Server
+### 5. Start Dev Server
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) — sign up, then explore the full agent workflow.
+
 
 ---
 
