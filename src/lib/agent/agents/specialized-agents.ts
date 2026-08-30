@@ -162,7 +162,48 @@ export class ApplicationStrategistAgent {
 }
 
 export class ApplicationGenerationAgent {
-  public generateTailoredResume(candidate: CandidateProfile, job: Job, analysis: JobMatchAnalysis): FullTailoredResume {
+  public async generateTailoredResume(candidate: CandidateProfile, job: Job, analysis: JobMatchAnalysis): Promise<FullTailoredResume & { isAIGenerated?: boolean }> {
+    try {
+      const { graphRAGEngine } = await import('@/lib/ai/graph-rag');
+      const { db } = await import('@/lib/db/store');
+      const { v4: uuidv4 } = await import('uuid');
+
+      const aiResume = await graphRAGEngine.generateResumeWithRAG(candidate, job, analysis);
+      db.addTrace({
+        id: uuidv4(),
+        workflowId: `agent-resume-${job.id}`,
+        timestamp: new Date().toISOString(),
+        agentName: 'Application Generation Agent',
+        task: 'Tailoring Resume with GraphRAG',
+        status: 'SUCCESS',
+        details: `Successfully generated AI resume grounded in knowledge graph evidence.`,
+        toolUsed: 'Gemini RAG'
+      });
+      return { ...aiResume, isAIGenerated: true };
+    } catch (error) {
+       const { db } = await import('@/lib/db/store');
+       const { v4: uuidv4 } = await import('uuid');
+       const { GeminiNotConfiguredError } = await import('@/lib/ai/gemini');
+       
+       if (!(error instanceof GeminiNotConfiguredError)) {
+          console.error("AI Resume generation failed, falling back to template:", error);
+       }
+       db.addTrace({
+        id: uuidv4(),
+        workflowId: `agent-resume-${job.id}`,
+        timestamp: new Date().toISOString(),
+        agentName: 'Application Generation Agent',
+        task: 'Tailoring Resume (Fallback)',
+        status: 'WARNING',
+        details: `Fell back to template generation due to AI unavailability.`,
+        toolUsed: 'Template'
+      });
+      const templateResume = this.generateTailoredResumeTemplate(candidate, job, analysis);
+      return { ...templateResume, isAIGenerated: false };
+    }
+  }
+
+  private generateTailoredResumeTemplate(candidate: CandidateProfile, job: Job, analysis: JobMatchAnalysis): FullTailoredResume {
     const matchedSkills = analysis.evidenceMap
       .filter(m => m.matchStatus === 'MATCHED')
       .map(m => m.requirementName);
@@ -251,7 +292,48 @@ export class ApplicationGenerationAgent {
     };
   }
 
-  public generateColdEmail(candidate: CandidateProfile, job: Job, analysis: JobMatchAnalysis): ColdEmailContent {
+  public async generateColdEmail(candidate: CandidateProfile, job: Job, analysis: JobMatchAnalysis): Promise<ColdEmailContent & { isAIGenerated?: boolean }> {
+    try {
+      const { graphRAGEngine } = await import('@/lib/ai/graph-rag');
+      const { db } = await import('@/lib/db/store');
+      const { v4: uuidv4 } = await import('uuid');
+
+      const aiEmail = await graphRAGEngine.generateEmailWithRAG(candidate, job, analysis);
+      db.addTrace({
+        id: uuidv4(),
+        workflowId: `agent-email-${job.id}`,
+        timestamp: new Date().toISOString(),
+        agentName: 'Application Generation Agent',
+        task: 'Drafting Cold Email with GraphRAG',
+        status: 'SUCCESS',
+        details: `Successfully generated AI email grounded in knowledge graph evidence.`,
+        toolUsed: 'Gemini RAG'
+      });
+      return { ...aiEmail, isAIGenerated: true };
+    } catch (error) {
+       const { db } = await import('@/lib/db/store');
+       const { v4: uuidv4 } = await import('uuid');
+       const { GeminiNotConfiguredError } = await import('@/lib/ai/gemini');
+
+       if (!(error instanceof GeminiNotConfiguredError)) {
+          console.error("AI Email generation failed, falling back to template:", error);
+       }
+       db.addTrace({
+        id: uuidv4(),
+        workflowId: `agent-email-${job.id}`,
+        timestamp: new Date().toISOString(),
+        agentName: 'Application Generation Agent',
+        task: 'Drafting Cold Email (Fallback)',
+        status: 'WARNING',
+        details: `Fell back to template generation due to AI unavailability.`,
+        toolUsed: 'Template'
+      });
+      const templateEmail = this.generateColdEmailTemplate(candidate, job, analysis);
+      return { ...templateEmail, isAIGenerated: false };
+    }
+  }
+
+  private generateColdEmailTemplate(candidate: CandidateProfile, job: Job, analysis: JobMatchAnalysis): ColdEmailContent {
     const keyProject = candidate.projects[0];
     const topExp = candidate.experience[0];
     const topMatch = analysis.evidenceMap.find(e => e.matchStatus === 'MATCHED')?.requirementName || candidate.skills[0]?.name || 'software engineering';

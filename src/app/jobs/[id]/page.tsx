@@ -422,19 +422,29 @@ export default function JobDetailPage() {
         </div>
       )}
 
-      {/* TAB CONTENT: FULL TAILORED & ORIGINAL RESUME */}
-      {activeTab === 'resume' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          {/* Header Controls */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-600" /> Resume Document Preview
-              </h2>
-              <p className="text-xs text-slate-500 font-medium">
-                {resumeMode === 'TAILORED' ? `Tailored specifically for ${job.company}` : 'Original candidate resume without job-specific tailoring'}
-              </p>
-            </div>
+        {/* TAB CONTENT: FULL TAILORED & ORIGINAL RESUME */}
+        {activeTab === 'resume' && (
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+            {/* Header Controls */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" /> Resume Document Preview
+                  {resumeMode === 'TAILORED' && tailoredResume?.isAIGenerated && (
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-md text-[10px] font-black tracking-wider uppercase ml-2 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> AI Generated
+                      </span>
+                  )}
+                  {resumeMode === 'TAILORED' && tailoredResume && !tailoredResume.isAIGenerated && (
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-black tracking-wider uppercase ml-2 flex items-center gap-1">
+                          📋 Template Generated
+                      </span>
+                  )}
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  {resumeMode === 'TAILORED' ? `Tailored specifically for ${job.company}` : 'Original candidate resume without job-specific tailoring'}
+                </p>
+              </div>
 
             <div className="flex items-center gap-2">
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
@@ -706,17 +716,27 @@ export default function JobDetailPage() {
         </div>
       )}
 
-      {/* TAB CONTENT: PERSONALIZED COLD EMAIL MESSAGE SCREEN */}
-      {activeTab === 'coldemail' && (
-        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Mail className="w-5 h-5 text-blue-600" /> PERSONALIZED COLD EMAIL
-              </h2>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                AI-generated outreach based on verified candidate evidence and the selected opportunity.
-              </p>
+        {/* TAB CONTENT: PERSONALIZED COLD EMAIL MESSAGE SCREEN */}
+        {activeTab === 'coldemail' && (
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-blue-600" /> PERSONALIZED COLD EMAIL
+                  {coldEmail?.isAIGenerated && (
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-md text-[10px] font-black tracking-wider uppercase ml-2 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> AI Generated
+                      </span>
+                  )}
+                  {coldEmail && !coldEmail.isAIGenerated && (
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-black tracking-wider uppercase ml-2 flex items-center gap-1">
+                          📋 Template Generated
+                      </span>
+                  )}
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  AI-generated outreach based on verified candidate evidence and the selected opportunity.
+                </p>
             </div>
 
             <div className="shrink-0 flex items-center gap-2">
