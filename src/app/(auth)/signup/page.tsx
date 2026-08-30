@@ -5,7 +5,11 @@ import dbClient from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import crypto from 'crypto';
 
-export default function SignupPage() {
+export default function SignupPage({
+  searchParams,
+}: {
+  searchParams: { error?: string, msg?: string };
+}) {
   async function signupAction(formData: FormData) {
     'use server';
     
@@ -45,6 +49,16 @@ export default function SignupPage() {
     redirect('/login?msg=AccountCreated');
   }
 
+  const errorMessage = searchParams?.error === 'EmailTaken' 
+    ? 'That email is already registered.' 
+    : searchParams?.error === 'PasswordMismatch'
+      ? 'Passwords do not match.'
+      : searchParams?.error === 'MissingFields'
+        ? 'Please fill in all fields.'
+        : searchParams?.error === 'ServerError'
+          ? 'An internal error occurred. Please try again.'
+          : null;
+
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -62,6 +76,11 @@ export default function SignupPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-slate-900/80 backdrop-blur-sm py-8 px-4 shadow-xl border border-slate-700 sm:rounded-3xl sm:px-10">
           <form className="space-y-6" action={signupAction}>
+            {errorMessage && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm">
+                {errorMessage}
+              </div>
+            )}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-slate-300">
                 Full name

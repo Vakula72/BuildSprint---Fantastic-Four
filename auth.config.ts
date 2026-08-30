@@ -1,31 +1,11 @@
 import type { NextAuthConfig } from 'next-auth';
-import Credentials from 'next-auth/providers/credentials';
-import Google from 'next-auth/providers/google';
 
 export const authConfig: NextAuthConfig = {
   trustHost: true,
   pages: {
     signIn: '/login',
   },
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
-    Credentials({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
-      },
-      async authorize(credentials) {
-        // Actual password validation happens in auth.ts
-        // This is intentionally minimal for edge runtime compatibility
-        if (!credentials?.email || !credentials?.password) return null;
-        return null;
-      },
-    }),
-  ],
+  providers: [], // Providers are strictly defined in auth.ts to avoid double definition issues in Next.js 15
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;

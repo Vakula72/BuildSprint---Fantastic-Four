@@ -23,15 +23,20 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetch('/api/profile')
-      .then((res) => res.json())
-      .then((data) => setProfile(data))
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (data) setProfile(data);
+      })
       .catch(() => {});
   }, []);
 
   const fullName = profile?.fullName || 'Candidate';
   const initials = fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'CA';
-  const headline = profile?.targetTitles[0] || profile?.headline || 'Software Engineer';
-  const location = profile?.targetLocations[0] || 'Remote';
+  const headline = profile?.targetTitles?.[0] || profile?.headline || 'Software Engineer';
+  const location = profile?.targetLocations?.[0] || 'Remote';
 
   const links = [
     { name: 'Dashboard', href: '/', icon: Briefcase },

@@ -21,15 +21,9 @@ if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
     } catch (e) {
         console.error(e);
     }
-} else {
-    // For production next.js the IIFE below runs, but tests might execute tests before IIFE finishes
-    (async () => {
-      try {
-        seedSync();
-      } catch (err) {
-        console.error("Failed to seed database on startup:", err);
-      }
-    })();
+} else if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    // We disable this IIFE to avoid Next.js dev mode reloading crashes with sqlite
+    // Seed will be called via a proper CLI script or server startup hook instead.
 }
 
 export const INITIAL_CANDIDATE_PROFILE: CandidateProfile = {
