@@ -44,3 +44,11 @@ next-env.d.ts
 /data/*.db
 /data/*.db-shm
 /data/*.db-wal
+career-os.db
+
+# Temporary Scripts and Logs
+*.log
+session-*.md
+test-*.js
+clean-db.ts
+delete-fake-jobs.ts
