@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
+import { verifyPassword } from '@/lib/auth-utils';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -14,19 +15,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         console.log('[Auth] Authorize called with email:', credentials?.email);
-        
         try {
-          // Dynamically import the Node-only logic inside the authorize function
-          const { verifyPassword } = await import('@/lib/auth-utils');
-          const user = await verifyPassword(credentials?.email as string, credentials?.password as string);
-          
-          if (!user) {
-             return null;
-          }
-
-          return user;
+          const user = await verifyPassword(
+            credentials?.email as string,
+            credentials?.password as string
+          );
+          console.log('[Auth] verifyPassword result:', user ? 'USER OK' : 'NULL - login failed');
+          return user ?? null;
         } catch (err) {
-          console.error('AUTH_CRASH: ', err);
+          console.error('[Auth] CRASH inside authorize:', err);
           return null;
         }
       },

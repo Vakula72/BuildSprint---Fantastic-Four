@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "node -r ts-node/register/transpile-only -r tsconfig-paths/register -e \"require('./src/lib/db/seed.ts').seedSync()\""
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -41,6 +42,8 @@
     "drizzle-kit": "^0.31.10",
     "magic-string": "^1.2.3",
     "tailwindcss": "^4.0.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   }
