@@ -52,33 +52,33 @@ export default function ProfilePage() {
     setUploadStep('UPLOADING');
 
     try {
-      let fileText = '';
-      try {
-        fileText = await file.text();
-      } catch (err) {
-        fileText = `${profile?.fullName || 'User'} - ${file.name}`;
-      }
+      // Send file as binary FormData — the server will parse the PDF properly
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileName', file.name);
 
       setUploadStep('PARSING');
-      await new Promise(r => setTimeout(r, 400));
-      setUploadStep('EXTRACTING');
-      await new Promise(r => setTimeout(r, 400));
 
       const res = await fetch('/api/resume/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          textContent: fileText
-        })
+        body: formData, // binary multipart — no Content-Type header needed
       });
+
+      setUploadStep('EXTRACTING');
       const data = await res.json();
+
       if (data.profile) {
-        setProfile(data.profile);
+        // Auto-populate ALL profile fields extracted from the resume
+        setProfile(prev => ({
+          ...(prev ?? data.profile),
+          ...data.profile,
+        }));
       }
+
       setUploadStep('READY');
     } catch (err) {
       console.error('Failed to upload file:', err);
+      setUploadStep('IDLE');
     } finally {
       setUploading(false);
     }

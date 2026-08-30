@@ -1,7 +1,89 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/store';
-import { CandidateProfile } from '@/lib/types';
 import { auth } from '@/auth';
+
+// Force Node.js runtime so pdf-parse works
+export const runtime = 'nodejs';
+
+async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  try {
+    // Dynamically import pdf-parse (it requires Node runtime)
+    const pdfParse = (await import('pdf-parse')).default;
+    const data = await pdfParse(buffer);
+    return data.text || '';
+  } catch (err) {
+    console.error('[Resume] PDF parse error:', err);
+    return '';
+  }
+}
+
+async function extractProfileFromText(text: string, fileName: string) {
+  // Try Gemini AI extraction first
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey && text.length > 100) {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const prompt = `Extract structured information from this resume text. Return ONLY valid JSON, no markdown.
+
+Resume text:
+${text.slice(0, 4000)}
+
+Return this exact JSON structure:
+{
+  "fullName": "candidate full name",
+  "email": "email address",
+  "phone": "phone number",
+  "headline": "professional headline or job title",
+  "summary": "professional summary paragraph",
+  "skills": [{"name": "SkillName", "proficiency": "Advanced|Intermediate|Beginner", "id": "sk1"}],
+  "experience": [{"id": "exp1", "company": "Company", "roleTitle": "Title", "startDate": "Jan 2024", "endDate": "Present", "description": "description", "achievements": ["achievement"]}],
+  "education": [{"id": "edu1", "institution": "University", "degree": "B.S. Computer Science", "startDate": "2020", "graduationDate": "2024", "gpa": "3.8"}],
+  "projects": [{"id": "proj1", "title": "Project Title", "description": "description", "technologies": ["Tech1"], "repoUrl": "", "liveUrl": ""}],
+  "targetTitles": ["Software Engineer"],
+  "targetLocations": ["Remote"],
+  "githubUrl": "",
+  "linkedinUrl": "",
+  "portfolioUrl": ""
+}`;
+
+      const result = await model.generateContent(prompt);
+      const raw = result.response.text().replace(/```json\n?|\n?```/g, '').trim();
+      const parsed = JSON.parse(raw);
+      return parsed;
+    } catch (err) {
+      console.error('[Resume] Gemini extraction failed, using regex fallback:', err);
+    }
+  }
+
+  // Regex fallback extraction
+  const emailMatch = text.match(/[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}/);
+  const phoneMatch = text.match(/(\+?[\d\s\-().]{10,})/);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const nameCandidate = lines[0] || fileName.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+
+  const skillKeywords = ['JavaScript','TypeScript','Python','React','Next.js','Node.js','SQL','AWS','Docker','Git','CSS','HTML','GraphQL','MongoDB','PostgreSQL','Redis','Kubernetes','Go','Rust','Java','C++','C#','Angular','Vue'];
+  const foundSkills = skillKeywords.filter(s => text.toLowerCase().includes(s.toLowerCase()));
+
+  return {
+    fullName: nameCandidate,
+    email: emailMatch?.[0] || '',
+    phone: phoneMatch?.[0]?.trim() || '',
+    headline: lines[1] || 'Software Engineer',
+    summary: lines.slice(2, 5).join(' ') || '',
+    skills: foundSkills.map((name, i) => ({ id: `sk_${i}`, name, proficiency: 'Intermediate' })),
+    experience: [],
+    education: [],
+    projects: [],
+    targetTitles: ['Software Engineer'],
+    targetLocations: ['Remote'],
+    githubUrl: (text.match(/github\.com\/[\w-]+/)?.[0] ? `https://${text.match(/github\.com\/[\w-]+/)?.[0]}` : ''),
+    linkedinUrl: (text.match(/linkedin\.com\/in\/[\w-]+/)?.[0] ? `https://${text.match(/linkedin\.com\/in\/[\w-]+/)?.[0]}` : ''),
+    portfolioUrl: '',
+  };
+}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -10,70 +92,86 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
-    const { fileName, textContent } = body;
+    const contentType = req.headers.get('content-type') || '';
+    let extractedText = '';
+    let fileName = 'resume.pdf';
 
-    if (!fileName) {
-      return NextResponse.json({ error: 'File name is required' }, { status: 400 });
+    if (contentType.includes('multipart/form-data')) {
+      // Binary PDF upload
+      const formData = await req.formData();
+      const file = formData.get('file') as File | null;
+      fileName = (formData.get('fileName') as string) || file?.name || 'resume.pdf';
+
+      if (file) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        extractedText = await extractTextFromPDF(buffer);
+      }
+    } else {
+      // Legacy JSON upload (fallback)
+      const body = await req.json();
+      fileName = body.fileName || 'resume.pdf';
+      extractedText = body.textContent || '';
     }
 
+    console.log(`[Resume] Parsed ${extractedText.length} chars from ${fileName}`);
+
+    if (!extractedText || extractedText.length < 50) {
+      return NextResponse.json({ error: 'Could not extract text from the file. Please upload a text-based PDF.' }, { status: 400 });
+    }
+
+    // Extract structured profile data
+    const extracted = await extractProfileFromText(extractedText, fileName);
+    console.log(`[Resume] Extracted profile for: ${extracted.fullName}`);
+
+    // Get existing profile and merge
     const currentProfile = db.getProfile(session.user.id);
 
-    // Trace 1: Upload event
-    db.addTrace({
-      workflowId: `resume_${Date.now()}`,
-      agentName: 'Career Profile Agent',
-      task: 'Resume Uploaded',
-      status: 'INFO',
-      details: `Received resume file '${fileName}'. Initiating automated text extraction and qualification parsing...`,
-      toolUsed: 'resume-parser'
-    }, session.user.id);
-
-    const candidateSkills = currentProfile.skills.map(s => s.name).join(', ');
-    const candidateProjects = currentProfile.projects.map(p => p.title).join(', ');
-    const candidateExp = currentProfile.experience.map(e => `${e.roleTitle} at ${e.company}`).join(', ');
-
-    const resumeText = textContent || `${currentProfile.fullName}. Email: ${currentProfile.email}. ${currentProfile.headline}. ${currentProfile.summary}. Skills: ${candidateSkills}. Projects: ${candidateProjects}. Experience: ${candidateExp}.`;
-
-    // Trace 2: Parse & Extract evidence
-    db.addTrace({
-      workflowId: `resume_${Date.now()}`,
-      agentName: 'Career Profile Agent',
-      task: 'Resume Parsed & Evidence Extracted',
-      status: 'SUCCESS',
-      details: `Successfully parsed '${fileName}'. Extracted 11 verified technical skills, 3 projects, and 2 education/work experience records. Zero unsupported claims detected.`,
-      toolUsed: 'resume-parser'
-    }, session.user.id);
-
-    const updatedProfile: CandidateProfile = {
+    const updatedProfile = {
       ...currentProfile,
+      // Only overwrite fields that were actually found in the resume
+      fullName: extracted.fullName || currentProfile.fullName,
+      email: extracted.email || currentProfile.email,
+      phone: extracted.phone || currentProfile.phone,
+      headline: extracted.headline || currentProfile.headline,
+      summary: extracted.summary || currentProfile.summary,
+      skills: extracted.skills?.length > 0 ? extracted.skills : currentProfile.skills,
+      experience: extracted.experience?.length > 0 ? extracted.experience : currentProfile.experience,
+      education: extracted.education?.length > 0 ? extracted.education : currentProfile.education,
+      projects: extracted.projects?.length > 0 ? extracted.projects : currentProfile.projects,
+      targetTitles: extracted.targetTitles?.length > 0 ? extracted.targetTitles : currentProfile.targetTitles,
+      targetLocations: extracted.targetLocations?.length > 0 ? extracted.targetLocations : currentProfile.targetLocations,
+      githubUrl: extracted.githubUrl || currentProfile.githubUrl,
+      linkedinUrl: extracted.linkedinUrl || currentProfile.linkedinUrl,
+      portfolioUrl: extracted.portfolioUrl || currentProfile.portfolioUrl,
       resumeFile: {
         fileName,
         uploadedAt: new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
-        fileSize: '185 KB',
-        extractedText: resumeText,
-        parsedAt: new Date().toISOString()
-      }
+        fileSize: `${Math.round(extractedText.length / 100) / 10} KB`,
+        extractedText,
+        parsedAt: new Date().toISOString(),
+      },
     };
 
     db.updateProfile(updatedProfile, session.user.id);
 
-    // Trace 3: Evidence updated
     db.addTrace({
       workflowId: `resume_${Date.now()}`,
-      agentName: 'Job Hunt Orchestrator',
-      task: 'Candidate Evidence Base Updated',
+      agentName: 'Career Profile Agent',
+      task: 'Resume Parsed & Profile Updated',
       status: 'SUCCESS',
-      details: `Updated primary candidate evidence base from '${fileName}'. All future job matches will cross-reference this uploaded resume.`
+      details: `Parsed '${fileName}'. Extracted ${extracted.skills?.length || 0} skills, ${extracted.experience?.length || 0} experience entries, ${extracted.projects?.length || 0} projects. Profile auto-populated.`,
+      toolUsed: 'resume-parser'
     }, session.user.id);
 
     return NextResponse.json({
       success: true,
       profile: updatedProfile,
-      message: 'Resume uploaded and parsed successfully.'
+      message: `Resume parsed successfully. Extracted ${extracted.skills?.length || 0} skills.`
     });
+
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to parse uploaded resume';
+    console.error('[Resume] Upload error:', err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
