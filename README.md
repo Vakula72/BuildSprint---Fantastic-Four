@@ -66,12 +66,12 @@ Students and job seekers face repetitive application processes, generic ATS resu
 - Side-by-side or toggle view comparing `ORIGINAL RESUME` vs `TAILORED RESUME` with print/download functionality.
 
 ### 3. Personalized Cold Email & Recruiter Contact
-- Candidate Sender Identity: `vakulasri_godavarthi@srmap.edu.in`.
-- Recruiter Recipient: Direct recruiter contact email or `Recruiter email not available` with an `[ Add Recipient ]` input.
+- Finding Candidate Sender Identity
+- Recruiter Recipient: Direct recruiter contact email
 
 ### 4. Human-in-the-Loop Safety & Explicit Approval
 - Action state transitions from `PENDING_APPROVAL` to `APPROVED` upon user authorization.
-- Displays `DEMO MODE: Email approved and simulated successfully`.
+- Displays Email approved and simulated successfully`.
 
 ### 5. Clickable Dynamic Dashboard
 - Dashboard metrics derive dynamically from database state and navigate directly to filtered tracking routes:
