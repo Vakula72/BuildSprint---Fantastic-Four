@@ -6,6 +6,10 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)]()
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)]()
 [![Auth](https://img.shields.io/badge/Auth-NextAuth.js%20v5-orange)]()
+[![Status](https://img.shields.io/badge/Status-In%20Development-yellow)]()
+
+> [!WARNING]
+> **Work in Progress:** This project is currently in active development. Features, APIs, and database schemas are subject to change.
 
 ---
 
@@ -98,7 +102,7 @@ Students and job seekers face repetitive application processes, generic ATS resu
 - Falls back gracefully to string-matching if Neo4j is unavailable
 
 ### 4. 🤖 Gemini Graph RAG (`src/lib/ai/`)
-- `gemini-1.5-flash` model with retry logic (3 attempts, exponential backoff)
+- `gemini-3.6-flash` model with retry logic (3 attempts, exponential backoff)
 - Graph context injected into prompts — grounded in verified evidence only
 - Upgrades resume and cold email generation from templates → AI-generated
 - Shows `✨ AI Generated` badge vs `📋 Template Generated` in UI
@@ -138,7 +142,7 @@ Students and job seekers face repetitive application processes, generic ATS resu
 | **Authentication** | NextAuth.js v5 (Credentials + Google OAuth) |
 | **Database** | SQLite + Drizzle ORM |
 | **Knowledge Graph** | Neo4j + Cypher multi-hop traversal |
-| **AI / LLM** | Google Gemini 1.5 Flash (Graph RAG) |
+| **AI / LLM** | Google Gemini 3.6 Flash (Graph RAG) |
 | **Email** | Nodemailer + Gmail SMTP App Password |
 | **Job Scraping** | Cheerio + Axios (RemoteOK, HN Hiring, Adzuna) |
 | **Testing** | Vitest — 8/8 passing |
@@ -307,10 +311,11 @@ Duration:   ~1.5s
 - 🚀 **Resume AI Parser Upgrade**: Updated Gemini prompt schemas to strictly enforce real resume data over mock templates, properly parsing `skillsUsed` and `highlights`.
 - 🚀 **Fallback Resilience**: Hardened the `EvidenceMatcherEngine` against corrupted AI JSON payloads by employing safe optional chaining.
 - 🚀 **UI Rendering Fixes**: Implemented automatic HTML stripping in job previews and fixed React runtime `.map()` crashes by ensuring empty-array fallbacks.
+- 🚀 **PDF Parsing Integration**: Resolved Node.js runtime errors by correctly configuring `serverExternalPackages` for the `pdf-parse` library in Next.js 15.
 - 🚀 **Seed Data Integrity**: Fixed the SQLite local database seeder to accurately parse and seed B.Tech degree formats for engineering candidates.
 
 ### v0.3.0 — AI + Scraper Layer (Aug 30, 2026)
-- ✅ **Gemini 1.5 Flash**: Graph RAG engine for grounded resume + email generation
+- ✅ **Gemini 3.6 Flash**: Graph RAG engine for grounded resume + email generation
 - ✅ **Job Scraper**: RemoteOK, HN Hiring, Adzuna — real live job discovery
 - ✅ **AI Generated badges**: UI shows whether content was AI or template generated
 - ✅ **Requirement Extractor**: Auto-detects 30+ tech skills from job descriptions
