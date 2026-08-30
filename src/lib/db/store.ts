@@ -466,7 +466,57 @@ class DataStore {
         .where(userId ? eq(candidateProfiles.userId, userId) : undefined)
         .limit(1)
         .get();
-    if (!profile) return INITIAL_CANDIDATE_PROFILE;
+
+    if (!profile) {
+      // No profile for this user yet — auto-create a blank one so they don't see Alex Morgan's data
+      if (userId) {
+        const newProfile: CandidateProfile = {
+          ...INITIAL_CANDIDATE_PROFILE,
+          id: `cand_${userId.slice(0, 12)}`,
+          fullName: '',
+          email: '',
+          phone: '',
+          headline: 'Software Engineer',
+          summary: '',
+          resumeFile: undefined,
+          skills: [],
+          projects: [],
+          experience: [],
+          education: [],
+          targetTitles: ['Software Engineer'],
+          targetLocations: ['Remote'],
+          githubUrl: '',
+          linkedinUrl: '',
+          portfolioUrl: '',
+        };
+        // Persist blank profile to DB
+        try {
+          client.insert(candidateProfiles).values({
+            id: newProfile.id,
+            userId,
+            fullName: newProfile.fullName,
+            email: newProfile.email,
+            phone: newProfile.phone,
+            headline: newProfile.headline,
+            summary: newProfile.summary,
+            targetTitles: newProfile.targetTitles,
+            targetLocations: newProfile.targetLocations,
+            githubUrl: newProfile.githubUrl,
+            linkedinUrl: newProfile.linkedinUrl,
+            portfolioUrl: newProfile.portfolioUrl,
+            resumeFile: null,
+            education: newProfile.education,
+            skills: newProfile.skills,
+            projects: newProfile.projects,
+            experience: newProfile.experience,
+            updatedAt: new Date().toISOString(),
+          }).run();
+        } catch (_) { /* profile may already exist, ignore */ }
+        return newProfile;
+      }
+      return INITIAL_CANDIDATE_PROFILE;
+    }
+
     return {
       ...profile,
       targetTitles: profile.targetTitles ? (typeof profile.targetTitles === 'string' ? JSON.parse(profile.targetTitles) : profile.targetTitles) : [],
