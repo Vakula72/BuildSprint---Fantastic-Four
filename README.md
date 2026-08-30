@@ -1,28 +1,33 @@
 # Agentic Job Hunt Copilot
 
-> **An Autonomous Job Hunt Operating System with Resume Upload, Evidence-Backed Personalization, Knowledge Graph Intelligence & Human-in-the-Loop Gatekeeping**
+> **An Autonomous Job Hunt Operating System — Multi-Agent Orchestration, Neo4j Knowledge Graph, Gemini Graph RAG, Real Job Scraping & Human-in-the-Loop Gatekeeping**
+
+[![Tests](https://img.shields.io/badge/tests-8%2F8%20passing-brightgreen)]()
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)]()
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)]()
+[![Auth](https://img.shields.io/badge/Auth-NextAuth.js%20v5-orange)]()
 
 ---
 
 ## 📌 Problem & Solution
 
-Students and job seekers face repetitive application processes, generic ATS resume screeners, and ineffective cold outreach. Traditional tools either generate generic hallucinated emails or force manual tracking.
+Students and job seekers face repetitive application processes, generic ATS resume screeners, and ineffective cold outreach. Traditional tools either hallucinate credentials or force tedious manual tracking.
 
-**Agentic Job Hunt Copilot** transforms the job hunt into a goal-driven multi-agent workflow:
-- **Resume Upload & Grounding**: Upload PDF/DOCX resumes parsed into structured evidence (Name, Email, Skills, Experience, Projects).
-- **Evidence-Backed Matching**: Cross-references job description requirements against verified candidate resume projects and work experience — preventing hallucinated claims.
-- **Neo4j Knowledge Graph**: Candidate skills, projects, and experience are stored as a graph. Multi-hop graph traversal powers intelligent evidence matching far beyond simple string comparison.
-- **Explainable Strategy Engine**: Dynamically decides whether to `APPLY`, `APPLY_AND_OUTREACH`, `OUTREACH`, or `SKIP` based on evidence coverage.
-- **Full Tailored Resume & Cold Outreach Workflow**: Generates complete role-specific resumes and cold emails grounded in verified candidate evidence.
-- **Human-in-the-Loop Control**: Autonomously researches, plans, and drafts, but strictly **pauses for user review and explicit approval** before any external action or cold outreach.
-- **Real SMTP Email Sending**: Cold outreach emails sent via Gmail SMTP with App Password — no fake simulation.
-- **Authentication**: Secure multi-user login/signup via NextAuth.js (Credentials + Google OAuth).
-- **Persistent SQLite Database**: All candidate data, jobs, applications, and agent traces stored persistently via Drizzle ORM.
-- **Interactive Dashboard & Tracking**: Dynamic clickable metric cards connected directly to application state, filtering pending approvals and approved outreach.
+**Agentic Job Hunt Copilot** transforms the job hunt into a fully autonomous, evidence-grounded, multi-agent workflow:
+
+- 🔍 **Real Job Discovery**: Scrapes live job listings from RemoteOK, Hacker News "Who's Hiring", and Adzuna (10M+ jobs globally)
+- 🧠 **Neo4j Knowledge Graph**: Candidate skills, projects, and experience stored as graph nodes — multi-hop Cypher traversal finds evidence paths far beyond simple string matching
+- 🤖 **Gemini Graph RAG**: Grounded AI generation using verified graph evidence — resumes and cold emails backed by facts, not hallucinations
+- 📋 **Evidence-Backed Matching**: Cross-references job requirements against verified candidate resume evidence — preventing fabricated claims
+- ⚡ **Explainable Strategy Engine**: Decides whether to `APPLY`, `APPLY_AND_OUTREACH`, `OUTREACH`, or `SKIP` based on evidence coverage score
+- 📧 **Real SMTP Email Sending**: Cold outreach sent via Gmail SMTP + App Password using Nodemailer — no fake simulation
+- 🔐 **Authentication**: Secure multi-user login/signup via NextAuth.js v5 (Credentials + Google OAuth)
+- 🗄️ **Persistent SQLite Database**: All candidate data, jobs, applications, traces stored permanently via Drizzle ORM
+- ⏸️ **Human-in-the-Loop Control**: Agents autonomously research, plan, and draft — but strictly pause for user approval before any external action
 
 ---
 
-## 🤖 Primary Agent Architecture
+## 🤖 Agent Architecture
 
 ```
                        ┌──────────────────────────────┐
@@ -33,126 +38,94 @@ Students and job seekers face repetitive application processes, generic ATS resu
           ▼                   ▼                   ▼                   ▼
    Career Profile      Opportunity        Job Intelligence        Skill Gap
        Agent         Discovery Agent           Agent                Agent
-          │                   │                   │                   │
-          └───────────────────┴───────┬───────────┴───────────────────┘
-                                      ▼
-                           ┌─────────────────────┐
-                           │  Neo4j Graph RAG    │ ──► [Multi-hop Evidence Traversal]
-                           │  Evidence Engine    │
-                           └──────────┬──────────┘
-                                      ▼
-                           ┌─────────────────────┐
-                           │ Strategist Agent    │ ──► [APPLY / OUTREACH / SKIP]
-                           └──────────┬──────────┘
-                                      ▼
-                           ┌─────────────────────┐
-                           │ Generation Agent    │ ──► [Full Tailored Resume + Cold Email]
-                           └──────────┬──────────┘
-                                      ▼
-                           ┌─────────────────────┐
-                           │ Human Approval Gate │ ⏸ (Explicit User Approval Required)
-                           └──────────┬──────────┘
-                                      ▼
-                           ┌─────────────────────┐
-                           │ Memory / Feedback   │ ──► [Outcome Tracker & Adaptive Skill Trends]
-                           └──────────┴──────────┘
+                           │
+                    ┌──────┴───────┐
+                    ▼              ▼             ▼
+              RemoteOK       HN Hiring       Adzuna API
+              Scraper         Scraper         (10M+ jobs)
+                    └──────┬───────┘
+                           ▼
+                  ┌─────────────────────┐
+                  │   SQLite Database   │ ← Persistent job storage
+                  └──────────┬──────────┘
+                             │
+                  ┌──────────▼──────────┐
+                  │  Neo4j Graph RAG   │ ← Multi-hop evidence traversal
+                  │  Evidence Engine   │
+                  └──────────┬──────────┘
+                             │
+                  ┌──────────▼──────────┐
+                  │  Gemini 1.5 Flash  │ ← Grounded AI generation
+                  └──────────┬──────────┘
+                             ▼
+                  ┌─────────────────────┐
+                  │  Strategist Agent  │ → APPLY / OUTREACH / SKIP
+                  └──────────┬──────────┘
+                             ▼
+                  ┌─────────────────────┐
+                  │  Generation Agent  │ → Tailored Resume + Cold Email
+                  └──────────┬──────────┘
+                             ▼
+                  ┌─────────────────────┐
+                  │ Human Approval Gate │ ⏸ Explicit user approval
+                  └──────────┬──────────┘
+                             ▼
+                  ┌─────────────────────┐
+                  │  SMTP Email Send   │ → Real Gmail delivery
+                  └─────────────────────┘
 ```
 
 ---
 
-## ⚙️ Core Workflow Capabilities
+## ⚙️ Core Features
 
-### 1. Authentication & Multi-User Support (`auth.ts`, `auth.config.ts`, `middleware.ts`)
-- Secure login/signup with **NextAuth.js v5** (beta).
-- **Credentials provider**: Email + bcrypt-hashed password.
-- **Google OAuth provider**: One-click sign-in.
-- Route protection via `middleware.ts` — all pages require authentication.
-- Auto user creation for OAuth sign-ins.
+### 1. 🔐 Authentication (`auth.ts`, `auth.config.ts`, `middleware.ts`)
+- NextAuth.js v5 with **Credentials** (email + bcrypt) and **Google OAuth**
+- Route protection middleware — all pages and API routes require login
+- Auto user creation for Google sign-ins
+- Login/signup pages with premium dark-themed UI
 
-### 2. Persistent SQLite Database (`src/lib/db/`)
-- Replaces in-memory store with **SQLite + Drizzle ORM**.
-- Tables: `users`, `candidate_profiles`, `jobs`, `applications`, `agent_traces`, `skill_gaps`.
-- All data persists across server restarts.
-- Seeded with demo candidate profile and initial job listings on first run.
+### 2. 🗄️ Persistent SQLite Database (`src/lib/db/`)
+- Replaced in-memory store with **SQLite + Drizzle ORM**
+- Tables: `users`, `candidate_profiles`, `jobs`, `applications`, `agent_traces`, `skill_gaps`
+- Auto-seeded with demo candidate profile and initial jobs on first run
+- All data survives server restarts
 
-### 3. Neo4j Knowledge Graph (`src/lib/graph/`)
-- Candidate profile synced as graph nodes: `Candidate`, `Skill`, `Project`, `Experience`.
-- Job requirements synced as: `Job`, `Requirement` nodes.
-- Relationships: `HAS_SKILL`, `BUILT`, `WORKED_AT`, `USES`, `REQUIRES`, `MAPS_TO`, `SATISFIES`.
-- **Graph evidence traversal** replaces string matching — Cypher multi-hop queries find paths between requirements and candidate evidence.
-- Falls back to string-based matching if Neo4j is unavailable.
+### 3. 🕸️ Neo4j Knowledge Graph (`src/lib/graph/`)
+- Candidate synced as graph: `Candidate → Skill → Project → Experience`
+- Jobs synced as: `Job → Requirement → Skill`
+- Cypher multi-hop traversal finds evidence paths between requirements and candidate proof
+- Falls back gracefully to string-matching if Neo4j is unavailable
 
-### 4. Resume Upload & Source of Truth (`src/app/profile/page.tsx` & `/api/resume/upload`)
-- Upload PDF/DOCX resumes with automated parsing stages (`Uploading...` → `Parsing...` → `Extracting evidence...` → `Ready`).
-- Stores resume metadata and updates Candidate Profile without inventing unverified qualifications.
+### 4. 🤖 Gemini Graph RAG (`src/lib/ai/`)
+- `gemini-1.5-flash` model with retry logic (3 attempts, exponential backoff)
+- Graph context injected into prompts — grounded in verified evidence only
+- Upgrades resume and cold email generation from templates → AI-generated
+- Shows `✨ AI Generated` badge vs `📋 Template Generated` in UI
+- Graceful fallback when `GEMINI_API_KEY` is not set
 
-### 5. Full Tailored Resume Generation (`src/app/jobs/[id]/page.tsx`)
-- Constructs complete resume documents featuring Candidate Header, Professional Summary, Technical Skills Alignment, Relevant Work Experience, and Featured Projects.
-- Side-by-side or toggle view comparing `ORIGINAL RESUME` vs `TAILORED RESUME` with print/download functionality.
+### 5. 🔍 Job Scraper (`src/lib/scraper/`)
+- **RemoteOK**: Free JSON API — remote tech jobs
+- **HN "Who's Hiring"**: Cheerio-parsed startup jobs from Hacker News
+- **Adzuna**: Free API — India 🇮🇳, US 🇺🇸, UK 🇬🇧 structured job listings
+- Auto-extracts tech requirements from job descriptions (TypeScript, React, Python, Docker, AWS, etc.)
+- Deduplicates by `sourceUrl` — no repeat jobs in DB
+- "🔍 Discover New Jobs" button on Jobs page
 
-### 6. Personalized Cold Email & Real SMTP Sending
-- Candidate Sender Identity: Configured via `SMTP_USER` env var.
-- Real email delivery via Gmail SMTP + App Password using Nodemailer.
-- Demo fallback: logs email to console if SMTP not configured.
+### 6. 📧 SMTP Email (`src/lib/email/`)
+- Real Gmail delivery via Nodemailer + App Password
+- HTML email template with candidate links
+- **DEMO MODE**: If SMTP not configured, logs full email to console and returns `SENT`
+- Status tracking: `PENDING_APPROVAL → APPROVED → SENT`
 
-### 7. Human-in-the-Loop Safety & Explicit Approval
-- Action state transitions from `PENDING_APPROVAL` → `APPROVED` → `SENT` upon user authorization.
+### 7. 📋 Resume Upload & Grounding
+- Upload PDF/DOCX with staged UI (`Uploading → Parsing → Extracting → Ready`)
+- Parsed evidence becomes the source of truth for all agent decisions
 
-### 8. Clickable Dynamic Dashboard
-- Dashboard metrics derive dynamically from SQLite database state:
-  - **Discovered Opportunities** → `/jobs`
-  - **Pending Approvals** → `/applications?filter=PENDING_APPROVAL`
-  - **Approved Outreach** → `/applications?filter=APPROVED`
-  - **Total Applications** → `/applications`
-
----
-
-## 🚀 Quickstart (Local Development)
-
-### Prerequisites
-- Node.js (v18+)
-- npm
-- Neo4j AuraDB account (free) — optional, falls back to string matching
-
-### 1. Clone & Install Dependencies
-```bash
-git clone <repository-url>
-cd agentic-job-hunt-copilot
-npm install
-```
-
-### 2. Configure Environment Variables
-Create a `.env.local` file in the root:
-```env
-# NextAuth
-AUTH_SECRET=your_random_32_char_secret
-NEXTAUTH_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# Neo4j (optional — falls back to string matching)
-NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your_password
-
-# SMTP Email (optional — falls back to console log)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your@gmail.com
-SMTP_APP_PASSWORD=xxxx xxxx xxxx xxxx
-```
-
-### 3. Run Automated Unit Tests
-```bash
-npx vitest run
-```
-
-### 4. Start Local Development Server
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser. Sign up for a new account to get started.
+### 8. ⏸️ Human-in-the-Loop Safety
+- Agent pipeline pauses after drafting — never auto-sends
+- Explicit user approval required before any external action
+- Full audit trail via `agent_traces` table
 
 ---
 
@@ -160,61 +133,136 @@ Open [http://localhost:3000](http://localhost:3000) in your browser. Sign up for
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Next.js 15 (App Router, TypeScript) |
+| **Framework** | Next.js 15 App Router, TypeScript 5 |
 | **Styling** | Tailwind CSS v4 |
 | **Authentication** | NextAuth.js v5 (Credentials + Google OAuth) |
 | **Database** | SQLite + Drizzle ORM |
-| **Knowledge Graph** | Neo4j (graph traversal evidence matching) |
-| **Email** | Nodemailer (Gmail SMTP + App Password) |
-| **Testing** | Vitest (8 tests passing) |
-| **Icons** | Custom SVG UI icons (`src/components/ui/icons.tsx`) |
-| **Agent Architecture** | Custom Multi-Agent Orchestration Engine |
+| **Knowledge Graph** | Neo4j + Cypher multi-hop traversal |
+| **AI / LLM** | Google Gemini 1.5 Flash (Graph RAG) |
+| **Email** | Nodemailer + Gmail SMTP App Password |
+| **Job Scraping** | Cheerio + Axios (RemoteOK, HN Hiring, Adzuna) |
+| **Testing** | Vitest — 8/8 passing |
+| **Agent Engine** | Custom Multi-Agent Orchestrator (TypeScript) |
+
+---
+
+## 🚀 Quickstart
+
+### Prerequisites
+- Node.js v18+
+- npm
+- Neo4j AuraDB account (free) — optional, falls back to string matching
+- Google Gemini API key (free) — optional, falls back to templates
+- Adzuna API credentials (free) — optional
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/Vakula72/BuildSprint---Fantastic-Four.git
+cd BuildSprint---Fantastic-Four
+npm install --legacy-peer-deps
+```
+
+### 2. Configure `.env.local`
+```env
+# NextAuth (required)
+AUTH_SECRET=your_random_32_char_secret_here
+NEXTAUTH_URL=http://localhost:3000
+
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Neo4j Knowledge Graph (optional — falls back to string matching)
+NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
+
+# Gemini AI (optional — falls back to template generation)
+GEMINI_API_KEY=your_gemini_api_key
+
+# SMTP Email (optional — falls back to console log DEMO MODE)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_APP_PASSWORD=xxxx xxxx xxxx xxxx
+
+# Adzuna Job Scraper (optional — sign up at developer.adzuna.com)
+ADZUNA_APP_ID=your_app_id
+ADZUNA_API_KEY=your_api_key
+```
+
+### 3. Run Tests
+```bash
+npx vitest run
+# ✓ 8/8 tests passing
+```
+
+### 4. Start Dev Server
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) — sign up, then explore the full agent workflow.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-src/
-├── app/
-│   ├── (auth)/login/         # Login page (NextAuth)
-│   ├── (auth)/signup/        # Signup page
-│   ├── api/
-│   │   ├── auth/[...nextauth]/ # NextAuth handler
-│   │   ├── agent/            # Agent run, approve, send-demo
-│   │   ├── graph/sync/       # Neo4j sync trigger
-│   │   ├── jobs/             # Job listings API
-│   │   ├── applications/     # Applications API
-│   │   ├── profile/          # Candidate profile API
-│   │   └── resume/upload/    # Resume upload API
-│   ├── jobs/                 # Job listings + [id] detail
-│   ├── applications/         # Applications tracker
-│   ├── profile/              # Candidate profile
-│   ├── skills/               # Skill gap insights
-│   └── activity/             # Agent trace log
-├── components/
-│   ├── layout/               # Header, Sidebar, Navigation, ContextPanel
-│   └── ui/                   # icons.tsx
-└── lib/
-    ├── agent/
-    │   ├── orchestrator.ts   # JobHuntOrchestrator
-    │   ├── agents/           # 7 specialized agents
-    │   └── tools/            # Evidence matcher, email service
-    ├── db/
-    │   ├── client.ts         # SQLite + Drizzle client
-    │   ├── schema.ts         # Database schema
-    │   ├── seed.ts           # Initial data seeding
-    │   └── store.ts          # DataStore (Drizzle-backed)
-    ├── graph/
-    │   ├── client.ts         # Neo4j driver
-    │   ├── schema.ts         # Graph node/relationship definitions
-    │   ├── sync.ts           # Candidate/job → graph sync
-    │   └── evidence-graph.ts # Graph-based evidence matcher
-    ├── email/                # Nodemailer SMTP service
-    └── types/                # TypeScript interfaces
-auth.ts                       # NextAuth main config
-auth.config.ts                # NextAuth provider config
-middleware.ts                 # Route protection middleware
+├── auth.ts                          # NextAuth main config
+├── auth.config.ts                   # Provider + callback config
+├── middleware.ts                    # Route protection
+├── drizzle.config.ts               # DB migration config
+└── src/
+    ├── app/
+    │   ├── (auth)/login/            # Login page
+    │   ├── (auth)/signup/           # Signup page
+    │   ├── api/
+    │   │   ├── auth/[...nextauth]/  # NextAuth handler
+    │   │   ├── agent/              # run, approve, send-demo
+    │   │   ├── ai/generate/        # Gemini RAG endpoint
+    │   │   ├── graph/sync/         # Neo4j sync trigger
+    │   │   ├── scraper/run/        # Job scraper trigger
+    │   │   ├── jobs/               # Job listings
+    │   │   ├── applications/       # Application tracker
+    │   │   ├── profile/            # Candidate profile
+    │   │   └── resume/upload/      # Resume upload + parse
+    │   ├── jobs/                   # Jobs listing + [id] detail
+    │   ├── applications/           # Application tracker
+    │   ├── profile/                # Candidate profile editor
+    │   ├── skills/                 # Skill gap insights
+    │   └── activity/               # Agent trace log
+    ├── components/
+    │   ├── layout/                 # Header, Sidebar, Nav, ContextPanel
+    │   └── ui/                     # icons.tsx
+    └── lib/
+        ├── agent/
+        │   ├── orchestrator.ts     # JobHuntOrchestrator
+        │   ├── agents/             # 7 specialized agents
+        │   └── tools/              # Evidence matcher, email service
+        ├── ai/
+        │   ├── gemini.ts           # Gemini client + retry logic
+        │   └── graph-rag.ts        # Graph RAG engine
+        ├── db/
+        │   ├── client.ts           # SQLite + Drizzle init
+        │   ├── schema.ts           # Table definitions
+        │   ├── seed.ts             # Demo data seeding
+        │   └── store.ts            # DataStore (Drizzle-backed)
+        ├── graph/
+        │   ├── client.ts           # Neo4j driver
+        │   ├── schema.ts           # Graph node/relationship model
+        │   ├── sync.ts             # Profile/job → graph sync
+        │   └── evidence-graph.ts   # Cypher-based evidence matcher
+        ├── email/
+        │   └── sendColdEmail.ts    # SMTP + DEMO MODE fallback
+        ├── scraper/
+        │   ├── index.ts            # JobScraperService
+        │   ├── requirement-extractor.ts
+        │   └── sources/
+        │       ├── remoteok.ts     # RemoteOK API
+        │       ├── hnhiring.ts     # HN Hiring (Cheerio)
+        │       └── adzuna.ts       # Adzuna API
+        └── types/                  # TypeScript interfaces
 ```
 
 ---
@@ -224,25 +272,35 @@ middleware.ts                 # Route protection middleware
 ```bash
 npx vitest run
 
-✓ tests/agent.test.ts (6 tests)
+stdout | Checking database seed status...
+✓ tests/agent.test.ts  (6 tests)
 ✓ tests/routes.test.ts (2 tests)
 
 Test Files: 2 passed
-Tests:      8 passed
+Tests:      8 passed ✅
+Duration:   ~1.5s
 ```
 
 ---
 
-## 📋 Update History
+## 📋 Version History
+
+### v0.3.0 — AI + Scraper Layer (Aug 30, 2026)
+- ✅ **Gemini 1.5 Flash**: Graph RAG engine for grounded resume + email generation
+- ✅ **Job Scraper**: RemoteOK, HN Hiring, Adzuna — real live job discovery
+- ✅ **AI Generated badges**: UI shows whether content was AI or template generated
+- ✅ **Requirement Extractor**: Auto-detects 30+ tech skills from job descriptions
+- ✅ **DEMO MODE email**: Console fallback when SMTP not configured
+- ✅ Fixed: Next.js 15 `searchParams` async breaking change in login page
+- ✅ Fixed: Replaced `uuid` package with `crypto.randomUUID()` (built-in)
 
 ### v0.2.0 — Backend Infrastructure (Aug 30, 2026)
-- ✅ **SQLite + Drizzle ORM**: Replaced in-memory store with persistent database
-- ✅ **NextAuth.js v5**: Full authentication (credentials + Google OAuth)
-- ✅ **Route Protection**: Middleware protecting all pages and API routes
-- ✅ **Neo4j Knowledge Graph**: Graph-based evidence matching with Cypher traversal
+- ✅ **SQLite + Drizzle ORM**: Persistent database replacing in-memory store
+- ✅ **NextAuth.js v5**: Full auth (credentials + Google OAuth)
+- ✅ **Route Protection**: Middleware securing all pages and API routes
+- ✅ **Neo4j Knowledge Graph**: Cypher multi-hop evidence matching
 - ✅ **Login/Signup Pages**: Premium dark-themed auth UI
-- ✅ **Header Updated**: User session display + sign out button
-- ✅ **8/8 Tests Passing**: All unit tests preserved and passing
+- ✅ **Header**: User session display + sign out button
 
 ### v0.1.0 — Initial Release (Aug 28, 2026)
 - ✅ Multi-agent orchestration engine (7 agents)
