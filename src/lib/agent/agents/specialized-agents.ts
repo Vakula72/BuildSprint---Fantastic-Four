@@ -33,6 +33,60 @@ export class OpportunityDiscoveryAgent {
       summary: `Discovered ${jobs.length} opportunities, filtered down to ${filtered.length} target matches.`
     };
   }
+
+  /**
+   * Triggers the scraper service to discover new jobs and logs a trace.
+   */
+  public async scrapeAndDiscover(source: 'all' | 'remoteok' | 'hn' | 'adzuna' = 'all'): Promise<{ newJobsAdded: number, totalJobs: number }> {
+    try {
+      const { jobScraper } = await import('@/lib/scraper');
+      const { db } = await import('@/lib/db/store');
+      const { v4: uuidv4 } = await import('uuid');
+
+      let result = { newJobsAdded: 0, totalJobs: 0, sources: [] as string[] };
+      
+      if (source === 'remoteok') {
+         const jobs = await jobScraper.scrapeRemoteOK();
+         result = { newJobsAdded: jobs.length, totalJobs: jobs.length, sources: ['remoteok'] };
+      } else if (source === 'hn') {
+         const jobs = await jobScraper.scrapeHNHiring();
+         result = { newJobsAdded: jobs.length, totalJobs: jobs.length, sources: ['hn'] };
+      } else if (source === 'adzuna') {
+         const jobs = await jobScraper.scrapeAdzuna();
+         result = { newJobsAdded: jobs.length, totalJobs: jobs.length, sources: ['adzuna'] };
+      } else {
+         result = await jobScraper.scrapeAll();
+      }
+
+      db.addTrace({
+        id: uuidv4(),
+        workflowId: 'agent-discovery',
+        timestamp: new Date().toISOString(),
+        agentName: 'OpportunityDiscoveryAgent',
+        task: 'Automated Job Discovery',
+        status: 'SUCCESS',
+        details: `Agent scraped job boards (${source}). Added ${result.newJobsAdded} new jobs out of ${result.totalJobs} found.`,
+        toolUsed: 'ScraperAPI'
+      });
+
+      return { newJobsAdded: result.newJobsAdded, totalJobs: result.totalJobs };
+    } catch (error) {
+      console.error('Error in OpportunityDiscoveryAgent.scrapeAndDiscover:', error);
+      const { db } = await import('@/lib/db/store');
+      const { v4: uuidv4 } = await import('uuid');
+      db.addTrace({
+        id: uuidv4(),
+        workflowId: 'agent-discovery',
+        timestamp: new Date().toISOString(),
+        agentName: 'OpportunityDiscoveryAgent',
+        task: 'Automated Job Discovery',
+        status: 'WARNING',
+        details: `Failed to scrape job boards: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        toolUsed: 'ScraperAPI'
+      });
+      return { newJobsAdded: 0, totalJobs: 0 };
+    }
+  }
 }
 
 export class JobIntelligenceAgent {

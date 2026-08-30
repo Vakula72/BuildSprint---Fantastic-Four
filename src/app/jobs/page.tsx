@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/icons';
 import { Job } from '@/lib/types';
 import ContextPanel from '@/components/layout/ContextPanel';
+import toast from 'react-hot-toast';
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -23,6 +24,7 @@ export default function JobsPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newCompany, setNewCompany] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -62,6 +64,30 @@ export default function JobsPage() {
     fetchJobs();
   }
 
+  async function handleDiscoverJobs() {
+    setIsScraping(true);
+    try {
+      const res = await fetch('/api/scraper/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'all' })
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        toast.success(`${data.newJobsAdded} new jobs discovered from RemoteOK, HN Hiring & Adzuna`);
+        fetchJobs();
+      } else {
+        toast.error('Failed to discover jobs.');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('An error occurred while discovering jobs.');
+    } finally {
+      setIsScraping(false);
+    }
+  }
+
   const filteredJobs = jobs.filter(
     j =>
       j.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -83,12 +109,30 @@ export default function JobsPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> Add Opportunity
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDiscoverJobs}
+              disabled={isScraping}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+            >
+              {isScraping ? (
+                <>
+                  <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  Agent scanning job boards...
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" /> Discover New Jobs
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Add Opportunity
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
